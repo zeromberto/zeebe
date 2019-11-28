@@ -16,6 +16,7 @@ import io.zeebe.engine.util.EngineRule;
 import io.zeebe.engine.util.client.PublishMessageClient;
 import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
+import io.zeebe.protocol.record.Assertions;
 import io.zeebe.protocol.record.Record;
 import io.zeebe.protocol.record.RecordType;
 import io.zeebe.protocol.record.intent.MessageSubscriptionIntent;
@@ -854,6 +855,42 @@ public class MessageCorrelationTest {
                 .withElementId("process")
                 .limit(1))
         .isNotEmpty();
+  }
+
+  @Test
+  public void shouldNotCorrelateBufferedMessageIfPublishedBefore() {
+    // given
+    engine
+        .message()
+        .withName("a")
+        .withCorrelationKey("key-1")
+        .withVariables(Map.of("x", 1))
+        .publish();
+
+    // when
+    engine
+        .deployment()
+        .withXmlResource(
+            Bpmn.createExecutableProcess("wf")
+                .startEvent()
+                .intermediateCatchEvent("catch")
+                .message(m -> m.name("a").zeebeCorrelationKey("key"))
+                .endEvent()
+                .done())
+        .deploy();
+
+    engine.workflowInstance().ofBpmnProcessId("wf").withVariable("key", "key-1").create();
+
+    engine
+        .message()
+        .withName("a")
+        .withCorrelationKey("key-1")
+        .withVariables(Map.of("x", 2))
+        .publish();
+
+    // then
+    final var variable = RecordingExporter.variableRecords().withName("x").getFirst();
+    Assertions.assertThat(variable.getValue()).hasValue("2");
   }
 
   private List<Record<WorkflowInstanceSubscriptionRecordValue>> awaitMessagesCorrelated(

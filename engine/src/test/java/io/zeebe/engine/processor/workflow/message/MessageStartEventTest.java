@@ -706,4 +706,86 @@ public class MessageStartEventTest {
         .describedAs("Expected messages [1,2,3,4] to be correlated")
         .containsExactly("1", "2", "3", "4");
   }
+
+  @Test
+  public void shouldNotCreateNewInstanceForBufferedMessageIfPublishedBefore() {
+    // given
+    engine
+        .message()
+        .withName(MESSAGE_NAME_1)
+        .withCorrelationKey(CORRELATION_KEY_1)
+        .withVariables(Map.of("x", 1))
+        .publish();
+
+    // when
+    engine.deployment().withXmlResource(SINGLE_START_EVENT).deploy();
+
+    engine
+        .message()
+        .withName(MESSAGE_NAME_1)
+        .withCorrelationKey(CORRELATION_KEY_1)
+        .withVariables(Map.of("x", 2))
+        .publish();
+
+    final var job1 = RecordingExporter.jobRecords(JobIntent.CREATED).getFirst();
+
+    engine
+        .message()
+        .withName(MESSAGE_NAME_1)
+        .withCorrelationKey(CORRELATION_KEY_1)
+        .withVariables(Map.of("x", 3))
+        .publish();
+
+    engine.job().withKey(job1.getKey()).complete();
+
+    // then
+    assertThat(RecordingExporter.variableRecords().withName("x").limit(2))
+        .extracting(r -> r.getValue().getValue())
+        .describedAs("Expected messages [2,3] to be correlated")
+        .containsExactly("2", "3");
+  }
+
+  @Test
+  public void shouldNotCorrelateBufferedMessageIfPublishedBefore() {
+    // given
+    engine
+        .message()
+        .withName(MESSAGE_NAME_1)
+        .withCorrelationKey(CORRELATION_KEY_1)
+        .withVariables(Map.of("x", 1, "key", CORRELATION_KEY_1))
+        .publish();
+
+    // when
+    engine
+        .deployment()
+        .withXmlResource(
+            Bpmn.createExecutableProcess("wf")
+                .startEvent()
+                .message(MESSAGE_NAME_1)
+                .intermediateCatchEvent("catch")
+                .message(m -> m.name(MESSAGE_NAME_1).zeebeCorrelationKey("key"))
+                .endEvent()
+                .done())
+        .deploy();
+
+    engine
+        .message()
+        .withName(MESSAGE_NAME_1)
+        .withCorrelationKey(CORRELATION_KEY_1)
+        .withVariables(Map.of("x", 2, "key", CORRELATION_KEY_1))
+        .publish();
+
+    engine
+        .message()
+        .withName(MESSAGE_NAME_1)
+        .withCorrelationKey(CORRELATION_KEY_1)
+        .withVariables(Map.of("x", 3, "key", CORRELATION_KEY_1))
+        .publish();
+
+    // then
+    assertThat(RecordingExporter.variableRecords().withName("x").limit(2))
+        .extracting(r -> r.getValue().getValue())
+        .describedAs("Expected messages [2,3] to be correlated")
+        .containsExactly("2", "3");
+  }
 }
