@@ -8,7 +8,6 @@
 package io.zeebe.el;
 
 import static io.zeebe.test.util.MsgPackUtil.asMsgPack;
-import static io.zeebe.util.buffer.BufferUtil.wrapString;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
@@ -27,7 +26,6 @@ public class EvaluationResultTest {
     assertThat(evaluationResult.getString()).isEqualTo("x");
     assertThat(evaluationResult.getBoolean()).isNull();
     assertThat(evaluationResult.getNumber()).isNull();
-    assertThat(evaluationResult.toBuffer()).isEqualTo(wrapString("x"));
   }
 
   @Test

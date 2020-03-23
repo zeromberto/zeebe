@@ -213,6 +213,14 @@ public final class ZeebeRuntimeValidationTest {
         Arrays.asList(expect(ZeebeTaskDefinition.class, INVALID_EXPRESSION_MESSAGE))
       },
       {
+        // invalid job retries expression
+        Bpmn.createExecutableProcess("process")
+            .startEvent()
+            .serviceTask("task", t -> t.zeebeJobRetriesExpression(INVALID_EXPRESSION))
+            .done(),
+        Arrays.asList(expect(ZeebeTaskDefinition.class, INVALID_EXPRESSION_MESSAGE))
+      },
+      {
         // output element expression is not supported
         Bpmn.createExecutableProcess("process")
             .startEvent()
