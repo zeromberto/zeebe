@@ -46,7 +46,8 @@ public final class ZeebeExpressionValidator<T extends ModelElementInstance>
     verifications.forEach(
         verification -> {
           final String expression = verification.expressionSupplier.apply(element);
-          verification.assertion.verify(expression, expressionLanguage, validationResultCollector);
+          verification.assertion.verify(
+              expression, verification.description, expressionLanguage, validationResultCollector);
         });
   }
 
@@ -57,28 +58,30 @@ public final class ZeebeExpressionValidator<T extends ModelElementInstance>
 
   private static void verifyExpression(
       final String expression,
+      final String description,
       final ExpressionLanguage expressionLanguage,
       final ValidationResultCollector resultCollector) {
 
     if (expression == null) {
-      resultCollector.addError(0, "Expected expression but not found.");
+      resultCollector.addError(0, description + ": Expected expression but not found.");
       return;
     }
 
     final var parseResult = expressionLanguage.parseExpression(expression);
 
     if (!parseResult.isValid()) {
-      resultCollector.addError(0, parseResult.getFailureMessage());
+      resultCollector.addError(0, description + ": " + parseResult.getFailureMessage());
     }
   }
 
   private static void verifyNonStaticExpression(
       final String expression,
+      final String description,
       final ExpressionLanguage expressionLanguage,
       final ValidationResultCollector resultCollector) {
 
     if (expression == null) {
-      resultCollector.addError(0, "Expected expression but not found.");
+      resultCollector.addError(0, description + ": Expected expression but not found.");
       return;
     }
 
@@ -92,18 +95,19 @@ public final class ZeebeExpressionValidator<T extends ModelElementInstance>
       resultCollector.addError(
           0,
           String.format(
-              "Expected expression but found static value '%s'. An expression must start with '=' (e.g. '=%s').",
-              expression, expression));
+              "%s: Expected expression but found static value '%s'. An expression must start with '=' (e.g. '=%s').",
+              description, expression, expression));
     }
   }
 
   private static void verifyPath(
       final String expression,
+      String description,
       final ExpressionLanguage expressionLanguage,
       final ValidationResultCollector resultCollector) {
 
     if (expression == null || expression.isEmpty()) {
-      resultCollector.addError(0, "Expected path expression but not found.");
+      resultCollector.addError(0, description + "Expected path expression but not found.");
       return;
     }
 
@@ -113,8 +117,8 @@ public final class ZeebeExpressionValidator<T extends ModelElementInstance>
       resultCollector.addError(
           0,
           String.format(
-              "Expected path expression '%s' but doesn't match the pattern '%s'.",
-              expression, PATH_PATTERN));
+              "%s: Expected path expression '%s' but doesn't match the pattern '%s'.",
+              description, expression, PATH_PATTERN));
     }
   }
 
@@ -127,22 +131,29 @@ public final class ZeebeExpressionValidator<T extends ModelElementInstance>
       this.elementType = elementType;
     }
 
-    public Builder<T> hasValidExpression(final Function<T, String> expressionSupplier) {
-      verifications.add(
-          new Verification<>(expressionSupplier, ZeebeExpressionValidator::verifyExpression));
-      return this;
-    }
-
-    public Builder<T> hasValidNonStaticExpression(final Function<T, String> expressionSupplier) {
+    public Builder<T> hasValidExpression(
+        final String description, final Function<T, String> expressionSupplier) {
       verifications.add(
           new Verification<>(
-              expressionSupplier, ZeebeExpressionValidator::verifyNonStaticExpression));
+              expressionSupplier, description, ZeebeExpressionValidator::verifyExpression));
       return this;
     }
 
-    public Builder<T> hasValidPath(final Function<T, String> expressionSupplier) {
+    public Builder<T> hasValidNonStaticExpression(
+        final String description, final Function<T, String> expressionSupplier) {
       verifications.add(
-          new Verification<>(expressionSupplier, ZeebeExpressionValidator::verifyPath));
+          new Verification<>(
+              expressionSupplier,
+              description,
+              ZeebeExpressionValidator::verifyNonStaticExpression));
+      return this;
+    }
+
+    public Builder<T> hasValidPath(
+        final String description, final Function<T, String> expressionSupplier) {
+      verifications.add(
+          new Verification<>(
+              expressionSupplier, description, ZeebeExpressionValidator::verifyPath));
       return this;
     }
 
@@ -154,10 +165,15 @@ public final class ZeebeExpressionValidator<T extends ModelElementInstance>
 
   private static final class Verification<T> {
     private final Function<T, String> expressionSupplier;
+    private final String description;
     private final Assertion assertion;
 
-    private Verification(final Function<T, String> expressionSupplier, final Assertion assertion) {
+    private Verification(
+        final Function<T, String> expressionSupplier,
+        String description,
+        final Assertion assertion) {
       this.expressionSupplier = expressionSupplier;
+      this.description = description;
       this.assertion = assertion;
     }
   }
@@ -166,6 +182,7 @@ public final class ZeebeExpressionValidator<T extends ModelElementInstance>
   private interface Assertion {
     void verify(
         String expression,
+        String description,
         ExpressionLanguage expressionLanguage,
         ValidationResultCollector resultCollector);
   }

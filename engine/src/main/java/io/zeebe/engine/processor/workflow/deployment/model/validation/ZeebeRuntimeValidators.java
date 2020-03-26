@@ -25,29 +25,36 @@ public final class ZeebeRuntimeValidators {
       final ExpressionLanguage expressionLanguage) {
     return List.of(
         ZeebeExpressionValidator.verifyThat(ZeebeInput.class)
-            .hasValidNonStaticExpression(ZeebeInput::getSource)
-            .hasValidPath(ZeebeInput::getTarget)
+            .hasValidNonStaticExpression("Validation of ZeebeInput.source", ZeebeInput::getSource)
+            .hasValidPath("Validation of ZeebeInput.target", ZeebeInput::getTarget)
             .build(expressionLanguage),
         ZeebeExpressionValidator.verifyThat(ZeebeOutput.class)
-            .hasValidNonStaticExpression(ZeebeOutput::getSource)
-            .hasValidPath(ZeebeOutput::getTarget)
+            .hasValidNonStaticExpression("Validation of ZeebeOutput.source", ZeebeOutput::getSource)
+            .hasValidPath("Validation of ZeebeOutput.target", ZeebeOutput::getTarget)
             .build(expressionLanguage),
         ZeebeExpressionValidator.verifyThat(ZeebeSubscription.class)
-            .hasValidExpression(ZeebeSubscription::getCorrelationKey)
+            .hasValidExpression(
+                "Validation of ZeebeSubscription.corelationKey",
+                ZeebeSubscription::getCorrelationKey)
             .build(expressionLanguage),
         ZeebeJsonPathValidator.verifyThat(ZeebeLoopCharacteristics.class)
             .hasValidPathExpression(ZeebeLoopCharacteristics::getInputCollection)
             .hasValidPathExpression(ZeebeLoopCharacteristics::getOutputElement)
             .build(),
         ZeebeExpressionValidator.verifyThat(ZeebeCalledElement.class)
-            .hasValidExpression(ZeebeCalledElement::getProcessId)
+            .hasValidExpression(
+                "Validation of ZeebeCalledElement.childElement", ZeebeCalledElement::getProcessId)
             .build(expressionLanguage),
         ZeebeExpressionValidator.verifyThat(ConditionExpression.class)
-            .hasValidExpression(ConditionExpression::getTextContent)
+            .hasValidExpression(
+                "Validation of ConditionExpression.textContent",
+                ConditionExpression::getTextContent)
             .build(expressionLanguage),
         ZeebeExpressionValidator.verifyThat(ZeebeTaskDefinition.class)
-            .hasValidExpression(ZeebeTaskDefinition::getType)
-            .hasValidExpression(ZeebeTaskDefinition::getRetries)
+            .hasValidExpression(
+                "Validation of ZeebeTaskDefinition.type", ZeebeTaskDefinition::getType)
+            .hasValidExpression(
+                "Validation of ZeebeTaskDefinition.retries", ZeebeTaskDefinition::getRetries)
             .build(expressionLanguage));
   }
 }
