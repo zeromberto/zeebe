@@ -128,7 +128,7 @@ public abstract class AbstractCatchEventBuilder<
    */
   public B timerWithDuration(final String timerDuration) {
     final TimeDuration timeDuration = createInstance(TimeDuration.class);
-    timeDuration.setTextContent(timerDuration);
+    timeDuration.setTextContent(asZeebeExpression(timerDuration));
 
     final TimerEventDefinition timerEventDefinition = createInstance(TimerEventDefinition.class);
     timerEventDefinition.setTimeDuration(timeDuration);
@@ -146,7 +146,7 @@ public abstract class AbstractCatchEventBuilder<
    */
   public B timerWithCycle(final String timerCycle) {
     final TimeCycle timeCycle = createInstance(TimeCycle.class);
-    timeCycle.setTextContent(timerCycle);
+    timeCycle.setTextContent(asZeebeExpression(timerCycle));
 
     final TimerEventDefinition timerEventDefinition = createInstance(TimerEventDefinition.class);
     timerEventDefinition.setTimeCycle(timeCycle);

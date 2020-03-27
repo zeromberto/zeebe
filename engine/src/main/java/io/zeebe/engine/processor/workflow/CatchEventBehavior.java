@@ -27,6 +27,7 @@ import io.zeebe.protocol.impl.SubscriptionUtil;
 import io.zeebe.protocol.impl.record.value.timer.TimerRecord;
 import io.zeebe.protocol.record.intent.TimerIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
+import io.zeebe.util.Either;
 import io.zeebe.util.buffer.BufferUtil;
 import io.zeebe.util.sched.clock.ActorClock;
 import java.util.HashMap;
@@ -83,12 +84,15 @@ public final class CatchEventBehavior {
     // if all subscriptions are valid then open the subscriptions
     for (final ExecutableCatchEvent event : events) {
       if (event.isTimer()) {
+        final Either<String, Timer> timer = event.getTimerFactory()
+            .apply(expressionProcessor, context);
+        // todo: deal with left case
         subscribeToTimerEvent(
             context.getKey(),
             context.getValue().getWorkflowInstanceKey(),
             context.getValue().getWorkflowKey(),
             event.getId(),
-            event.getTimer(),
+            timer.get(),
             context.getOutput().getStreamWriter());
       } else if (event.isMessage()) {
         subscribeToMessageEvent(context, event, extractedCorrelationKeys.get(event.getId()));

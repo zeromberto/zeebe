@@ -34,7 +34,7 @@ public final class TimerCatchEventTest {
   private static final BpmnModelInstance SINGLE_TIMER_WORKFLOW =
       Bpmn.createExecutableProcess("SINGLE_TIMER_WORKFLOW")
           .startEvent()
-          .intermediateCatchEvent("timer", c -> c.timerWithDuration("PT0.1S"))
+          .intermediateCatchEvent("timer", c -> c.timerWithDuration("\"PT0.1S\""))
           .endEvent()
           .done();
   private static final BpmnModelInstance BOUNDARY_EVENT_WORKFLOW =
@@ -43,7 +43,7 @@ public final class TimerCatchEventTest {
           .serviceTask("task", b -> b.zeebeJobType("type"))
           .boundaryEvent("timer")
           .cancelActivity(true)
-          .timerWithDuration("PT1S")
+          .timerWithDuration("\"PT1S\"")
           .endEvent("eventEnd")
           .moveToActivity("task")
           .endEvent("taskEnd")
@@ -54,7 +54,7 @@ public final class TimerCatchEventTest {
           .serviceTask("task", b -> b.zeebeJobType("type"))
           .boundaryEvent("timer")
           .cancelActivity(false)
-          .timerWithCycle("R2/PT1S")
+          .timerWithCycle("\"R2/PT1S\"")
           .endEvent()
           .moveToNode("task")
           .endEvent()
@@ -65,7 +65,7 @@ public final class TimerCatchEventTest {
           .serviceTask("task", b -> b.zeebeJobType("type"))
           .boundaryEvent("timer")
           .cancelActivity(false)
-          .timerWithCycle("R/PT1S")
+          .timerWithCycle("\"R/PT1S\"")
           .endEvent()
           .moveToNode("task")
           .endEvent()
@@ -96,7 +96,7 @@ public final class TimerCatchEventTest {
     final BpmnModelInstance workflow =
         Bpmn.createExecutableProcess("testLifeCycle")
             .startEvent()
-            .intermediateCatchEvent("timer", c -> c.timerWithDuration("PT0S"))
+            .intermediateCatchEvent("timer", c -> c.timerWithDuration("\"PT0S\""))
             .endEvent()
             .done();
 
@@ -130,7 +130,7 @@ public final class TimerCatchEventTest {
     final BpmnModelInstance workflow =
         Bpmn.createExecutableProcess("shouldCreateTimer")
             .startEvent()
-            .intermediateCatchEvent("timer", c -> c.timerWithDuration("PT10S"))
+            .intermediateCatchEvent("timer", c -> c.timerWithDuration("\"PT10S\""))
             .endEvent()
             .done();
 

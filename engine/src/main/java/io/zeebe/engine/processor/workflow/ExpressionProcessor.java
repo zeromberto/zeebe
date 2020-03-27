@@ -17,7 +17,9 @@ import io.zeebe.el.ResultType;
 import io.zeebe.engine.processor.workflow.message.MessageCorrelationKeyContext;
 import io.zeebe.engine.processor.workflow.message.MessageCorrelationKeyException;
 import io.zeebe.engine.state.instance.VariablesState;
+import io.zeebe.model.bpmn.util.time.Interval;
 import io.zeebe.protocol.record.value.ErrorType;
+import io.zeebe.util.Either;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -93,6 +95,28 @@ public final class ExpressionProcessor {
         .flatMap(
             result -> typeCheck(result, ResultType.BOOLEAN, ErrorType.EXTRACT_VALUE_ERROR, context))
         .map(EvaluationResult::getBoolean);
+  }
+
+  public Either<String, Interval> evaluateIntervalExpression(
+      final Expression expression, final BpmnStepContext<?> context) {
+    final var result = evaluateExpression(expression, context.getKey());
+    if (result.isFailure()) {
+      return Either.left(result.getFailureMessage());
+    }
+    switch (result.getType()) {
+      case DURATION:
+        return Either.right(new Interval(result.getDuration()));
+      case PERIOD:
+        return Either.right(new Interval(result.getPeriod()));
+      case STRING:
+        return Either.right(Interval.parse(result.getString()));
+      default:
+        final var expected = List.of(ResultType.DURATION, ResultType.PERIOD, ResultType.STRING);
+        return Either.left(
+            String.format(
+                "Expected result of the expression '%s' to be one of '%s', but was '%s'",
+                expression.getExpression(), expected, result.getType()));
+    }
   }
 
   /**
