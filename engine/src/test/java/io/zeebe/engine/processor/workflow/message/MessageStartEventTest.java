@@ -21,8 +21,14 @@ import io.zeebe.protocol.record.intent.MessageSubscriptionIntent;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.protocol.record.intent.WorkflowInstanceSubscriptionIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
+import io.zeebe.protocol.record.value.DeploymentRecordValue;
 import io.zeebe.protocol.record.value.VariableRecordValue;
 import io.zeebe.test.util.record.RecordingExporter;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -740,5 +746,31 @@ public final class MessageStartEventTest {
         .extracting(r -> r.getValue().getValue())
         .describedAs("Expected messages [1,2,3,4] to be correlated")
         .containsExactly("1", "2", "3", "4");
+  }
+
+  @Test
+  public void shouldCreateNewInstanceWithEventSubprocess() throws URISyntaxException, IOException {
+    // given
+    final Path path =
+        Paths.get(
+            getClass()
+                .getResource("/workflows/regression_test_4099_correlation_issue.bpmn")
+                .toURI());
+    final byte[] resource = Files.readAllBytes(path);
+    final Record<DeploymentRecordValue> deploymentRecords =
+        engine.deployment().withXmlResource(resource).deploy();
+
+    // when
+    engine
+        .message()
+        .withName("myStartMessage")
+        .withCorrelationKey("123")
+        .withVariables(Map.of("orderID", 123))
+        .publish();
+
+    // then
+    assertThat(RecordingExporter.workflowInstanceRecords(WorkflowInstanceIntent.ELEMENT_ACTIVATED))
+        .describedAs("WorkflowInstanceRecords with intent 'ELEMENT_ACTIVATED'")
+        .hasSize(1);
   }
 }
