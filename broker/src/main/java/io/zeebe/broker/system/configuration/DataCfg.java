@@ -26,6 +26,9 @@ public final class DataCfg implements ConfigurationEntry {
 
   private int maxSnapshots = 3;
 
+  // useMmap is not explicitly exposed to the user
+  private boolean useMmap = false;
+
   @Override
   public void init(
       final BrokerCfg globalConfig, final String brokerBase, final Environment environment) {
@@ -37,6 +40,7 @@ public final class DataCfg implements ConfigurationEntry {
 
   private void applyEnvironment(final Environment environment) {
     environment.getList(EnvironmentConstants.ENV_DIRECTORIES).ifPresent(v -> directories = v);
+    environment.getBool(EnvironmentConstants.ENV_USE_MMAP).ifPresent(this::setUseMmap);
   }
 
   public List<String> getDirectories() {
@@ -77,6 +81,14 @@ public final class DataCfg implements ConfigurationEntry {
 
   public void setRaftSegmentSize(final String raftSegmentSize) {
     this.raftSegmentSize = raftSegmentSize;
+  }
+
+  public boolean useMmap() {
+    return useMmap;
+  }
+
+  public void setUseMmap(final boolean useMmap) {
+    this.useMmap = useMmap;
   }
 
   @Override
