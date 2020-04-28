@@ -7,6 +7,7 @@
  */
 package io.zeebe.broker.system.configuration;
 
+import io.atomix.storage.StorageLevel;
 import io.zeebe.util.Environment;
 import java.util.Arrays;
 import java.util.List;
@@ -27,7 +28,7 @@ public final class DataCfg implements ConfigurationEntry {
   private int maxSnapshots = 3;
 
   // useMmap is not explicitly exposed to the user
-  private boolean useMmap = false;
+  private boolean useMmap = true;
 
   @Override
   public void init(
@@ -89,6 +90,10 @@ public final class DataCfg implements ConfigurationEntry {
 
   public void setUseMmap(final boolean useMmap) {
     this.useMmap = useMmap;
+  }
+
+  public StorageLevel getAtomixStorageLevel() {
+    return useMmap() ? StorageLevel.MAPPED : StorageLevel.DISK;
   }
 
   @Override

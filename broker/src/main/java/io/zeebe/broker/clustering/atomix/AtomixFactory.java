@@ -17,7 +17,6 @@ import io.atomix.core.Atomix;
 import io.atomix.core.AtomixBuilder;
 import io.atomix.protocols.raft.partition.RaftPartitionGroup;
 import io.atomix.protocols.raft.partition.RaftPartitionGroup.Builder;
-import io.atomix.storage.StorageLevel;
 import io.atomix.utils.net.Address;
 import io.zeebe.broker.Loggers;
 import io.zeebe.broker.clustering.atomix.storage.snapshot.DbSnapshotStoreFactory;
@@ -104,7 +103,6 @@ public final class AtomixFactory {
     final DataCfg dataCfg = configuration.getData();
     final NetworkCfg networkCfg = configuration.getNetwork();
 
-    final StorageLevel storageLevel = dataCfg.useMmap() ? StorageLevel.MAPPED : StorageLevel.DISK;
     final Builder partitionGroupBuilder =
         RaftPartitionGroup.builder(AtomixFactory.GROUP_NAME)
             .withNumPartitions(clusterCfg.getPartitionsCount())
@@ -113,7 +111,7 @@ public final class AtomixFactory {
             .withDataDirectory(raftDirectory)
             .withStateMachineFactory(ZeebeRaftStateMachine::new)
             .withSnapshotStoreFactory(new DbSnapshotStoreFactory())
-            .withStorageLevel(storageLevel)
+            .withStorageLevel(dataCfg.getAtomixStorageLevel())
             .withFlushOnCommit();
 
     // by default, the Atomix max entry size is 1 MB
