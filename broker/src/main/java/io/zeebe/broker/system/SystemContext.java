@@ -32,7 +32,7 @@ public final class SystemContext {
   private static final String REPLICATION_FACTOR_ERROR_MSG =
       "Replication factor %s needs to be larger then zero and not larger then cluster size %s.";
   private static final String MMAP_REPLICATION_ERROR_MSG =
-    "Using memory mapped storage level is currently unsafe with replication enabled; if you wish to use replication, set useMmap to false";
+      "Using memory mapped storage level is currently unsafe with replication enabled; if you wish to use replication, set useMmap to false";
   protected final BrokerCfg brokerCfg;
   private Map<String, String> diagnosticContext;
   private ActorScheduler scheduler;
