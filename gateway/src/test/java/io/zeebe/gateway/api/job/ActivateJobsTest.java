@@ -21,11 +21,29 @@ import io.zeebe.test.util.JsonUtil;
 import io.zeebe.util.buffer.BufferUtil;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public final class ActivateJobsTest extends GatewayTest {
+
+  private final String testName;
+
+  public ActivateJobsTest(final String testName, final boolean longPollingEnabled) {
+    this.testName = testName;
+    this.config.getLongPolling().setEnabled(longPollingEnabled);
+  }
+
+  @Parameters(name = "{0}")
+  public static Collection<Object[]> data() {
+    return List.of(
+        new Object[] {"longPolling enabled", true}, new Object[] {"longPolling disabled", false});
+  }
 
   @Test
   public void shouldMapRequestAndResponse() {

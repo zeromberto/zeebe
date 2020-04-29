@@ -8,6 +8,7 @@
 package io.zeebe.broker.it.client.command;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assumptions.assumeThat;
 
 import io.zeebe.broker.it.util.GrpcClientRule;
 import io.zeebe.broker.test.EmbeddedBrokerRule;
@@ -17,23 +18,40 @@ import io.zeebe.client.api.response.ActivateJobsResponse;
 import io.zeebe.client.api.response.ActivatedJob;
 import io.zeebe.test.util.BrokerClassRuleHelper;
 import io.zeebe.util.ByteValue;
+import java.util.Collection;
+import java.util.List;
 import org.junit.Before;
-import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.RuleChain;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public final class ActivateJobsTest {
-
-  private static final EmbeddedBrokerRule BROKER_RULE = new EmbeddedBrokerRule();
-  private static final GrpcClientRule CLIENT_RULE = new GrpcClientRule(BROKER_RULE);
-
-  @ClassRule
-  public static RuleChain ruleChain = RuleChain.outerRule(BROKER_RULE).around(CLIENT_RULE);
 
   @Rule public final BrokerClassRuleHelper helper = new BrokerClassRuleHelper();
 
+  @Parameter(0)
+  public String testName;
+
+  @Parameter(1)
+  public boolean longPollingEnabled;
+
+  private final EmbeddedBrokerRule brokerRule =
+      new EmbeddedBrokerRule(
+          cfg -> cfg.getGateway().getLongPolling().setEnabled(longPollingEnabled));
+  private final GrpcClientRule clientRule = new GrpcClientRule(brokerRule);
+  @Rule public RuleChain ruleChain = RuleChain.outerRule(brokerRule).around(clientRule);
   private String jobType;
+
+  @Parameters(name = "{0}")
+  public static Collection<Object[]> data() {
+    return List.of(
+        new Object[] {"longPolling disabled", false}, new Object[] {"longPolling enabled", true});
+  }
 
   @Before
   public void init() {
@@ -46,11 +64,11 @@ public final class ActivateJobsTest {
     final int availableJobs = 3;
     final int activateJobs = 2;
 
-    CLIENT_RULE.createJobs(jobType, availableJobs);
+    clientRule.createJobs(jobType, availableJobs);
 
     // when
     final ActivateJobsResponse response =
-        CLIENT_RULE
+        clientRule
             .getClient()
             .newActivateJobsCommand()
             .jobType(jobType)
@@ -67,15 +85,15 @@ public final class ActivateJobsTest {
     // given
     final int availableJobs = 10;
 
-    final ByteValue maxMessageSize = BROKER_RULE.getBrokerCfg().getNetwork().getMaxMessageSize();
+    final ByteValue maxMessageSize = brokerRule.getBrokerCfg().getNetwork().getMaxMessageSize();
     final var largeVariableValue = "x".repeat((int) maxMessageSize.toBytes() / 4);
     final String variablesJson = String.format("{\"variablesJson\":\"%s\"}", largeVariableValue);
 
-    CLIENT_RULE.createJobs(jobType, b -> {}, variablesJson, availableJobs);
+    clientRule.createJobs(jobType, b -> {}, variablesJson, availableJobs);
 
     // when
     final var response =
-        CLIENT_RULE
+        clientRule
             .getClient()
             .newActivateJobsCommand()
             .jobType(jobType)
@@ -89,11 +107,14 @@ public final class ActivateJobsTest {
 
   @Test
   public void shouldWaitUntilJobsAvailable() {
+    // assumed
+    assumeThat(longPollingEnabled).isTrue();
+
     // given
     final int expectedJobsCount = 1;
 
     final ZeebeFuture<ActivateJobsResponse> responseFuture =
-        CLIENT_RULE
+        clientRule
             .getClient()
             .newActivateJobsCommand()
             .jobType(jobType)
@@ -101,7 +122,7 @@ public final class ActivateJobsTest {
             .send();
 
     // when
-    CLIENT_RULE.createSingleJob(jobType);
+    clientRule.createSingleJob(jobType);
 
     // then
     final ActivateJobsResponse response = responseFuture.join();
@@ -110,11 +131,14 @@ public final class ActivateJobsTest {
 
   @Test
   public void shouldActivatedJobForOpenRequest() throws InterruptedException {
+    // assumed
+    assumeThat(longPollingEnabled).isTrue();
+
     // given
     sendActivateRequestsAndClose(jobType, 3);
 
     final var activateJobsResponse =
-        CLIENT_RULE
+        clientRule
             .getClient()
             .newActivateJobsCommand()
             .jobType(jobType)
@@ -125,7 +149,7 @@ public final class ActivateJobsTest {
     sendActivateRequestsAndClose(jobType, 3);
 
     // when
-    CLIENT_RULE.createSingleJob(jobType);
+    clientRule.createSingleJob(jobType);
 
     // then
     final var jobs = activateJobsResponse.join().getJobs();
@@ -138,7 +162,7 @@ public final class ActivateJobsTest {
     for (int i = 0; i < count; i++) {
       final ZeebeClient client =
           ZeebeClient.newClientBuilder()
-              .brokerContactPoint(BROKER_RULE.getGatewayAddress().toString())
+              .brokerContactPoint(brokerRule.getGatewayAddress().toString())
               .usePlaintext()
               .build();
 

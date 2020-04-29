@@ -9,23 +9,47 @@ package io.zeebe.gateway.impl.job;
 
 import io.grpc.Status.Code;
 import io.grpc.StatusRuntimeException;
+import io.grpc.stub.StreamObserver;
+import io.zeebe.gateway.ActivateJobsHandler;
 import io.zeebe.gateway.EndpointManager;
 import io.zeebe.gateway.Loggers;
+import io.zeebe.gateway.RequestMapper;
 import io.zeebe.gateway.ResponseMapper;
 import io.zeebe.gateway.impl.broker.BrokerClient;
+import io.zeebe.gateway.impl.broker.cluster.BrokerClusterState;
 import io.zeebe.gateway.impl.broker.request.BrokerActivateJobsRequest;
+import io.zeebe.gateway.protocol.GatewayOuterClass.ActivateJobsRequest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.ActivateJobsResponse;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
-public final class ActivateJobsHandler {
+public final class ActivateJobsHandlerImpl implements ActivateJobsHandler {
 
   private final Map<String, Integer> jobTypeToNextPartitionId = new HashMap<>();
   private final BrokerClient brokerClient;
 
-  public ActivateJobsHandler(final BrokerClient brokerClient) {
+  public ActivateJobsHandlerImpl(final BrokerClient brokerClient) {
     this.brokerClient = brokerClient;
+  }
+
+  @Override
+  public void activateJobs(
+      final ActivateJobsRequest request,
+      final StreamObserver<ActivateJobsResponse> responseObserver) {
+    final BrokerClusterState topology = brokerClient.getTopologyManager().getTopology();
+    if (topology != null) {
+      final BrokerActivateJobsRequest dtoRequest = RequestMapper.toActivateJobsRequest(request);
+      final int partitionsCount = topology.getPartitionsCount();
+      activateJobs(
+          partitionsCount,
+          dtoRequest,
+          request.getMaxJobsToActivate(),
+          request.getType(),
+          responseObserver::onNext,
+          remainingAmount -> responseObserver.onCompleted());
+    }
   }
 
   public void activateJobs(
@@ -34,7 +58,7 @@ public final class ActivateJobsHandler {
       final int maxJobsToActivate,
       final String type,
       final Consumer<ActivateJobsResponse> onResponse,
-      final Consumer<Integer> onCompleted) {
+      final IntConsumer onCompleted) {
     activateJobs(
         request,
         partitionIdIteratorForType(type, partitionsCount),
@@ -50,7 +74,7 @@ public final class ActivateJobsHandler {
       final int remainingAmount,
       final String jobType,
       final Consumer<ActivateJobsResponse> onResponse,
-      final Consumer<Integer> onCompleted) {
+      final IntConsumer onCompleted) {
     activateJobs(
         request, partitionIdIterator, remainingAmount, jobType, onResponse, onCompleted, false);
   }
@@ -61,7 +85,7 @@ public final class ActivateJobsHandler {
       final int remainingAmount,
       final String jobType,
       final Consumer<ActivateJobsResponse> onResponse,
-      final Consumer<Integer> onCompleted,
+      final IntConsumer onCompleted,
       final boolean pollPrevPartition) {
 
     if (remainingAmount > 0 && (pollPrevPartition || partitionIdIterator.hasNext())) {

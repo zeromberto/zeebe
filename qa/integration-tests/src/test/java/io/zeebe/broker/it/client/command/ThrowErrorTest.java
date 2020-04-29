@@ -23,6 +23,7 @@ import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import io.zeebe.protocol.record.value.JobRecordValue;
 import io.zeebe.test.util.BrokerClassRuleHelper;
+import io.zeebe.test.util.TestUtil;
 import io.zeebe.test.util.record.RecordingExporter;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -57,8 +58,14 @@ public final class ThrowErrorTest {
                 .endEvent()
                 .done());
 
-    CLIENT_RULE.createWorkflowInstance(workflowKey);
-
+    final var workflowInstanceKey = CLIENT_RULE.createWorkflowInstance(workflowKey);
+    TestUtil.waitUntil(
+        () ->
+            RecordingExporter.jobRecords(JobIntent.CREATED)
+                    .withWorkflowInstanceKey(workflowInstanceKey)
+                    .limit(1)
+                    .count()
+                >= 1);
     jobKey = activateJob().getKey();
   }
 

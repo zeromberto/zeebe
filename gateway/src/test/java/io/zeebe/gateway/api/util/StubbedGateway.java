@@ -11,35 +11,46 @@ import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import io.zeebe.gateway.ActivateJobsHandler;
 import io.zeebe.gateway.EndpointManager;
+import io.zeebe.gateway.impl.configuration.GatewayCfg;
+import io.zeebe.gateway.impl.job.ActivateJobsHandlerImpl;
 import io.zeebe.gateway.impl.job.LongPollingActivateJobsHandler;
 import io.zeebe.gateway.protocol.GatewayGrpc;
 import io.zeebe.gateway.protocol.GatewayGrpc.GatewayBlockingStub;
 import io.zeebe.util.sched.ActorScheduler;
 import java.io.IOException;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
 public final class StubbedGateway {
 
   private static final String SERVER_NAME = "server";
 
   private final StubbedBrokerClient brokerClient;
-  private final LongPollingActivateJobsHandler longPollingHandler;
   private final ActorScheduler actorScheduler;
+  private final GatewayCfg config;
   private Server server;
 
   public StubbedGateway(
       final ActorScheduler actorScheduler,
       final StubbedBrokerClient brokerClient,
-      final LongPollingActivateJobsHandler longPollingHandler) {
+      final GatewayCfg config) {
     this.actorScheduler = actorScheduler;
     this.brokerClient = brokerClient;
-    this.longPollingHandler = longPollingHandler;
+    this.config = config;
   }
 
   public void start() throws IOException {
-    actorScheduler.submitActor(longPollingHandler);
-    final EndpointManager endpointManager = new EndpointManager(brokerClient, longPollingHandler);
+    final ActivateJobsHandler activateJobsHandler;
+    if (config.getLongPolling().isEnabled()) {
+      final var longPollingHandler =
+          LongPollingActivateJobsHandler.newBuilder().setBrokerClient(brokerClient).build();
+      activateJobsHandler = longPollingHandler;
+      actorScheduler.submitActor(longPollingHandler);
+    } else {
+      activateJobsHandler = new ActivateJobsHandlerImpl(brokerClient);
+    }
+
+    final EndpointManager endpointManager = new EndpointManager(brokerClient, activateJobsHandler);
     final InProcessServerBuilder serverBuilder =
         InProcessServerBuilder.forName(SERVER_NAME).addService(endpointManager);
     server = serverBuilder.build();

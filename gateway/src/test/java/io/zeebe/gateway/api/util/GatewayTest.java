@@ -7,6 +7,7 @@
  */
 package io.zeebe.gateway.api.util;
 
+import io.zeebe.gateway.impl.configuration.GatewayCfg;
 import io.zeebe.gateway.protocol.GatewayGrpc.GatewayBlockingStub;
 import io.zeebe.util.sched.clock.ControlledActorClock;
 import io.zeebe.util.sched.testing.ActorSchedulerRule;
@@ -16,9 +17,10 @@ import org.junit.rules.RuleChain;
 
 public class GatewayTest {
 
-  protected final ControlledActorClock actorClock = new ControlledActorClock();
-  public final ActorSchedulerRule actorSchedulerRule = new ActorSchedulerRule(actorClock);
-  public final StubbedGatewayRule gatewayRule = new StubbedGatewayRule(actorSchedulerRule);
+  protected ControlledActorClock actorClock = new ControlledActorClock();
+  protected GatewayCfg config = new GatewayCfg();
+  protected ActorSchedulerRule actorSchedulerRule = new ActorSchedulerRule(actorClock);
+  protected StubbedGatewayRule gatewayRule = new StubbedGatewayRule(actorSchedulerRule, config);
   @Rule public RuleChain ruleChain = RuleChain.outerRule(actorSchedulerRule).around(gatewayRule);
 
   protected StubbedGateway gateway;

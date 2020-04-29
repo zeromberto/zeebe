@@ -10,6 +10,7 @@ package io.zeebe.gateway.impl.job;
 import static io.zeebe.util.sched.clock.ActorClock.currentTimeMillis;
 
 import io.grpc.stub.StreamObserver;
+import io.zeebe.gateway.ActivateJobsHandler;
 import io.zeebe.gateway.Loggers;
 import io.zeebe.gateway.impl.broker.BrokerClient;
 import io.zeebe.gateway.impl.broker.cluster.BrokerClusterState;
@@ -26,12 +27,12 @@ import java.util.Objects;
 import java.util.Queue;
 import org.slf4j.Logger;
 
-public final class LongPollingActivateJobsHandler extends Actor {
+public final class LongPollingActivateJobsHandler extends Actor implements ActivateJobsHandler {
 
   private static final String JOBS_AVAILABLE_TOPIC = "jobsAvailable";
   private static final Logger LOG = Loggers.GATEWAY_LOGGER;
 
-  private final ActivateJobsHandler activateJobsHandler;
+  private final ActivateJobsHandlerImpl activateJobsHandler;
   private final BrokerClient brokerClient;
 
   // jobType -> state
@@ -48,7 +49,7 @@ public final class LongPollingActivateJobsHandler extends Actor {
       final long probeTimeoutMillis,
       final int emptyResponseThreshold) {
     this.brokerClient = brokerClient;
-    this.activateJobsHandler = new ActivateJobsHandler(brokerClient);
+    this.activateJobsHandler = new ActivateJobsHandlerImpl(brokerClient);
     this.longPollingTimeout = Duration.ofMillis(longPollingTimeout);
     this.probeTimeoutMillis = probeTimeoutMillis;
     this.emptyResponseThreshold = emptyResponseThreshold;
@@ -60,6 +61,13 @@ public final class LongPollingActivateJobsHandler extends Actor {
     return "GatewayLongPollingJobHandler";
   }
 
+  @Override
+  protected void onActorStarted() {
+    brokerClient.subscribeJobAvailableNotification(JOBS_AVAILABLE_TOPIC, this::onNotification);
+    actor.runAtFixedRate(Duration.ofMillis(probeTimeoutMillis), this::probe);
+  }
+
+  @Override
   public void activateJobs(
       final ActivateJobsRequest request,
       final StreamObserver<ActivateJobsResponse> responseObserver) {
@@ -94,12 +102,6 @@ public final class LongPollingActivateJobsHandler extends Actor {
           response -> onResponse(request, response),
           remainingAmount -> onCompleted(request, remainingAmount));
     }
-  }
-
-  @Override
-  protected void onActorStarted() {
-    brokerClient.subscribeJobAvailableNotification(JOBS_AVAILABLE_TOPIC, this::onNotification);
-    actor.runAtFixedRate(Duration.ofMillis(probeTimeoutMillis), this::probe);
   }
 
   private void onNotification(final String jobType) {

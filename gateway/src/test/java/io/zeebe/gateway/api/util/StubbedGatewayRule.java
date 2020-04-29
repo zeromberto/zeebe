@@ -7,7 +7,7 @@
  */
 package io.zeebe.gateway.api.util;
 
-import io.zeebe.gateway.impl.job.LongPollingActivateJobsHandler;
+import io.zeebe.gateway.impl.configuration.GatewayCfg;
 import io.zeebe.gateway.protocol.GatewayGrpc.GatewayBlockingStub;
 import io.zeebe.util.sched.testing.ActorSchedulerRule;
 import org.junit.rules.ExternalResource;
@@ -18,18 +18,21 @@ public final class StubbedGatewayRule extends ExternalResource {
   protected GatewayBlockingStub client;
   private final ActorSchedulerRule actorSchedulerRule;
   private final StubbedBrokerClient brokerClient;
-  private final LongPollingActivateJobsHandler longPollingHandler;
+  private final GatewayCfg config;
 
   public StubbedGatewayRule(final ActorSchedulerRule actorSchedulerRule) {
+    this(actorSchedulerRule, new GatewayCfg());
+  }
+
+  public StubbedGatewayRule(final ActorSchedulerRule actorSchedulerRule, final GatewayCfg config) {
     this.actorSchedulerRule = actorSchedulerRule;
     this.brokerClient = new StubbedBrokerClient();
-    this.longPollingHandler =
-        LongPollingActivateJobsHandler.newBuilder().setBrokerClient(brokerClient).build();
+    this.config = config;
   }
 
   @Override
   protected void before() throws Throwable {
-    gateway = new StubbedGateway(actorSchedulerRule.get(), brokerClient, longPollingHandler);
+    gateway = new StubbedGateway(actorSchedulerRule.get(), brokerClient, config);
     gateway.start();
     client = gateway.buildClient();
   }

@@ -18,6 +18,7 @@ public class GatewayCfg {
   private ThreadsCfg threads = new ThreadsCfg();
   private MonitoringCfg monitoring = new MonitoringCfg();
   private SecurityCfg security = new SecurityCfg();
+  private LongPollingCfg longPolling = new LongPollingCfg();
 
   public void init() {
     init(new Environment());
@@ -80,9 +81,17 @@ public class GatewayCfg {
     return this;
   }
 
+  public LongPollingCfg getLongPolling() {
+    return longPolling;
+  }
+
+  public void setLongPolling(final LongPollingCfg longPolling) {
+    this.longPolling = longPolling;
+  }
+
   @Override
   public int hashCode() {
-    return Objects.hash(network, cluster, threads, monitoring, security);
+    return Objects.hash(network, cluster, threads, monitoring, security, longPolling);
   }
 
   @Override
@@ -98,7 +107,8 @@ public class GatewayCfg {
         && Objects.equals(cluster, that.cluster)
         && Objects.equals(threads, that.threads)
         && Objects.equals(monitoring, that.monitoring)
-        && Objects.equals(security, that.security);
+        && Objects.equals(security, that.security)
+        && Objects.equals(longPolling, that.longPolling);
   }
 
   @Override
@@ -114,6 +124,8 @@ public class GatewayCfg {
         + monitoring
         + ", securityCfg="
         + security
+        + ", longPollingCfg="
+        + longPolling
         + '}';
   }
 
