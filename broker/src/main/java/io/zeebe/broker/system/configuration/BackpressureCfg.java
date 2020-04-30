@@ -7,11 +7,23 @@
  */
 package io.zeebe.broker.system.configuration;
 
+import io.zeebe.util.Environment;
+
 public final class BackpressureCfg implements ConfigurationEntry {
 
-  private boolean enabled = true;
+  private boolean enabled = false;
   private boolean useWindowed = true;
   private String algorithm = "vegas";
+
+  @Override
+  public void init(
+      final BrokerCfg globalConfig, final String brokerBase, final Environment environment) {
+    applyEnvironment(environment);
+  }
+
+  private void applyEnvironment(final Environment environment) {
+    environment.getBool(EnvironmentConstants.ENV_BACKPRESSURE_ENABLED).ifPresent(this::setEnabled);
+  }
 
   public boolean isEnabled() {
     return enabled;
