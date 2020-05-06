@@ -23,6 +23,20 @@ public class FlakyTest {
   }
 
   @Test
+  public void shouldFailSevenInTenInvocations() {
+    if (random.nextDouble() < 0.7) {
+      Assert.fail("failed");
+    }
+  }
+
+  @Test
+  public void shouldFailSixInTenInvocations() {
+    if (random.nextDouble() < 0.6) {
+      Assert.fail("failed");
+    }
+  }
+
+  @Test
   public void shouldFailOnceInTwoInvocations() {
     if (random.nextDouble() < 0.5) {
       Assert.fail("failed");
