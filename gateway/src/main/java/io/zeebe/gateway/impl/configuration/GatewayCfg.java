@@ -28,11 +28,11 @@ public class GatewayCfg {
   }
 
   public void init(final Environment environment, final String defaultHost) {
-    backpressure.init(environment);
     network.init(environment, defaultHost);
     cluster.init(environment);
     threads.init(environment);
     monitoring.init(environment, defaultHost);
+    backpressure.init(environment);
   }
 
   public NetworkCfg getNetwork() {

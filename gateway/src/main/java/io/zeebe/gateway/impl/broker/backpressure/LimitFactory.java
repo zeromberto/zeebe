@@ -9,6 +9,7 @@ package io.zeebe.gateway.impl.broker.backpressure;
 
 import com.netflix.concurrency.limits.Limit;
 import com.netflix.concurrency.limits.limit.AIMDLimit;
+import io.zeebe.gateway.impl.configuration.AIMDCfg;
 import io.zeebe.gateway.impl.configuration.BackpressureCfg;
 import io.zeebe.gateway.impl.configuration.BackpressureCfg.LimitAlgorithm;
 import io.zeebe.gateway.impl.configuration.GatewayCfg;
@@ -22,7 +23,7 @@ public final class LimitFactory {
 
     switch (algorithm) {
       case AIMD:
-        return newAimdLimit(config);
+        return newAimdLimit(config.getBackpressure());
       default:
         throw new IllegalArgumentException(
             String.format(
@@ -31,10 +32,14 @@ public final class LimitFactory {
     }
   }
 
-  private AIMDLimit newAimdLimit(final GatewayCfg config) {
-    final Duration requestTimeout = config.getCluster().getRequestTimeout();
+  private AIMDLimit newAimdLimit(final BackpressureCfg backpressureCfg) {
+    final AIMDCfg config = backpressureCfg.getAimdCfg();
+    final Duration requestTimeout = config.getRequestTimeout();
     return AIMDLimit.newBuilder()
-        .initialLimit(1000)
+        .initialLimit(config.getInitialLimit())
+        .minLimit(config.getMinLimit())
+        .maxLimit(config.getMaxLimit())
+        .backoffRatio(config.getBackoffRatio())
         .timeout(requestTimeout.toMillis(), TimeUnit.MILLISECONDS)
         .build();
   }

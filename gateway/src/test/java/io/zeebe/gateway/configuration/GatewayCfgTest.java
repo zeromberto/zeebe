@@ -22,6 +22,7 @@ import static io.zeebe.gateway.impl.configuration.EnvironmentConstants.ENV_GATEW
 import static io.zeebe.gateway.impl.configuration.EnvironmentConstants.ENV_GATEWAY_TRANSPORT_BUFFER;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.zeebe.gateway.impl.configuration.BackpressureCfg;
 import io.zeebe.gateway.impl.configuration.GatewayCfg;
 import io.zeebe.util.Environment;
 import io.zeebe.util.TomlConfigurationReader;
@@ -38,6 +39,8 @@ public class GatewayCfgTest {
   private static final String EMPTY_CFG_FILENAME = "/configuration/gateway.empty.toml";
   private static final String CUSTOM_CFG_FILENAME = "/configuration/gateway.custom.toml";
   private static final GatewayCfg CUSTOM_CFG = new GatewayCfg();
+  private static final String CUSTOM_CFG_BACKPRESSURE_FILENAME =
+      "/configuration/gateway.backpressure.toml";
 
   static {
     DEFAULT_CFG.init();
@@ -85,6 +88,19 @@ public class GatewayCfgTest {
   }
 
   @Test
+  public void shouldConfigureBackPressure() {
+
+    // when
+    final GatewayCfg gatewayCfg = readConfig(CUSTOM_CFG_BACKPRESSURE_FILENAME);
+
+    // then
+    final BackpressureCfg backpressure = gatewayCfg.getBackpressure();
+    assertThat(backpressure.isEnabled()).isTrue();
+    assertThat(backpressure.getAimdCfg().getBackoffRatio()).isEqualTo(0.5);
+    assertThat(backpressure.getAimdCfg().getInitialLimit()).isEqualTo(50);
+  }
+
+  @Test
   public void shouldUseEnvironmentVariables() {
     // given
     setEnv(ENV_GATEWAY_HOST, "zeebe");
@@ -122,7 +138,7 @@ public class GatewayCfgTest {
     assertThat(gatewayCfg).isEqualTo(expected);
   }
 
-  private void setEnv(String key, String value) {
+  private void setEnv(final String key, final String value) {
     environment.put(key, value);
   }
 
@@ -138,7 +154,7 @@ public class GatewayCfgTest {
     return readConfig(CUSTOM_CFG_FILENAME);
   }
 
-  private GatewayCfg readConfig(String filename) {
+  private GatewayCfg readConfig(final String filename) {
     try (InputStream inputStream = GatewayCfgTest.class.getResourceAsStream(filename)) {
       if (inputStream != null) {
         final GatewayCfg gatewayCfg = TomlConfigurationReader.read(inputStream, GatewayCfg.class);
@@ -147,7 +163,7 @@ public class GatewayCfgTest {
       } else {
         throw new AssertionError("Unable to find configuration file: " + filename);
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new AssertionError("Failed to read configuration from file: " + filename, e);
     }
   }
