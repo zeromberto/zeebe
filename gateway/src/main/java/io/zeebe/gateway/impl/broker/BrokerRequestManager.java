@@ -193,9 +193,6 @@ public class BrokerRequestManager extends Actor {
               if (error == null) {
                 final BrokerResponse<T> response = request.getResponse(clientResponse);
                 responseConsumer.accept(response, null);
-                wasDropped =
-                    (response.isError()
-                        && response.getError().getCode() == ErrorCode.RESOURCE_EXHAUSTED);
               } else {
                 responseConsumer.accept(null, error);
                 wasDropped = (error instanceof RequestTimeoutException);
