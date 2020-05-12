@@ -37,6 +37,9 @@ public final class BrokerRequestLimiter extends AbstractLimiter<BrokerRequest<?>
       return Optional.of(NoopListener.INSTANCE);
     }
 
+    // todo: should this include the count of whitelisted commands?
+    metrics.receivedRequest(partitionId);
+
     final BrokerExecuteCommand<?> command = (BrokerExecuteCommand<?>) request;
     if (isWhitelisted(command.getIntent())) {
       return Optional.of(NoopListener.INSTANCE);
