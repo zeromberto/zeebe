@@ -10,12 +10,15 @@ package io.zeebe.gateway.impl.configuration;
 import io.zeebe.util.Environment;
 
 public final class BackpressureCfg {
+
   private boolean enabled = true;
+  private final AIMDCfg aimd = new AIMDCfg();
 
   public void init(final Environment environment) {
     environment
         .getBool(EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_ENABLED)
         .ifPresent(this::setEnabled);
+    aimd.init(environment);
   }
 
   public boolean isEnabled() {
@@ -31,7 +34,16 @@ public final class BackpressureCfg {
     return LimitAlgorithm.AIMD;
   }
 
+  public AIMDCfg getAimdCfg() {
+    return aimd;
+  }
+
   public enum LimitAlgorithm {
     AIMD,
+  }
+
+  @Override
+  public String toString() {
+    return "BackpressureCfg{" + "enabled=" + enabled + ", aimd=" + aimd + '}';
   }
 }
