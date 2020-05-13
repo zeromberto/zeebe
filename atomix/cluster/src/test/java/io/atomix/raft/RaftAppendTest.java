@@ -85,7 +85,9 @@ public class RaftAppendTest {
       if (!member.equals("1")) {
         final var otherEntries = memberLog.get(member);
 
-        assertThat(firstMemberEntries).containsExactly(otherEntries.toArray(new Indexed[0]));
+        assertThat(otherEntries)
+            .describedAs("Entry comparison 1 vs " + member)
+            .containsExactly(firstMemberEntries.toArray(new Indexed[0]));
       }
     }
   }
