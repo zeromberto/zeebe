@@ -18,6 +18,7 @@ package io.atomix.raft;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.atomix.storage.journal.Indexed;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.junit.Ignore;
@@ -47,21 +48,22 @@ public class RaftFailOverTest {
     // given
     final var entryCount = 20;
     raftRule.appendEntries(entryCount);
-    raftRule.awaitCommit(entryCount);
     raftRule.shutdownFollower();
 
     // when
-    raftRule.appendEntries(entryCount);
+    final var lastIndex = raftRule.appendEntries(entryCount);
 
     // then
-    // 40 zeebe entries and 1 initial entry
-    final var expectedEntryCount = entryCount * 2 + 1;
-    raftRule.awaitCommit(expectedEntryCount);
     raftRule.awaitSameLogSizeOnAllNodes();
     final var memberLog = raftRule.getMemberLogs();
 
-    final var logLength = memberLog.values().stream().map(List::size).findFirst().orElseThrow();
-    assertThat(logLength).isEqualTo(expectedEntryCount);
+    final var maxIndex =
+        memberLog.values().stream()
+            .flatMap(Collection::stream)
+            .map(Indexed::index)
+            .max(Long::compareTo)
+            .orElseThrow();
+    assertThat(maxIndex).isEqualTo(lastIndex);
     assertMemberLogs(memberLog);
   }
 
@@ -70,22 +72,23 @@ public class RaftFailOverTest {
     // given
     final var entryCount = 20;
     raftRule.appendEntries(entryCount);
-    raftRule.awaitCommit(entryCount);
     raftRule.shutdownLeader();
 
     // when
     raftRule.awaitNewLeader();
-    raftRule.appendEntries(entryCount);
+    final var lastIndex = raftRule.appendEntries(entryCount);
 
     // then
-    // 40 zeebe entries and 2 initial entries
-    final var expectedEntryCount = entryCount * 2 + 2;
-    raftRule.awaitCommit(expectedEntryCount);
     raftRule.awaitSameLogSizeOnAllNodes();
     final var memberLog = raftRule.getMemberLogs();
 
-    final var logLength = memberLog.values().stream().map(List::size).findFirst().orElseThrow();
-    assertThat(logLength).isEqualTo(expectedEntryCount);
+    final var maxIndex =
+        memberLog.values().stream()
+            .flatMap(Collection::stream)
+            .map(Indexed::index)
+            .max(Long::compareTo)
+            .orElseThrow();
+    assertThat(maxIndex).isEqualTo(lastIndex);
     assertMemberLogs(memberLog);
   }
 
@@ -94,22 +97,23 @@ public class RaftFailOverTest {
     // given
     final var entryCount = 20;
     raftRule.appendEntries(entryCount);
-    raftRule.awaitCommit(entryCount);
     raftRule.restartLeader();
 
     // when
     raftRule.awaitNewLeader();
-    raftRule.appendEntries(entryCount);
+    final var lastIndex = raftRule.appendEntries(entryCount);
 
     // then
-    // 40 zeebe entries and 2 initial entries
-    final var expectedEntryCount = entryCount * 2 + 2;
-    raftRule.awaitCommit(expectedEntryCount);
     raftRule.awaitSameLogSizeOnAllNodes();
     final var memberLog = raftRule.getMemberLogs();
 
-    final var logLength = memberLog.values().stream().map(List::size).findFirst().orElseThrow();
-    assertThat(logLength).isEqualTo(expectedEntryCount);
+    final var maxIndex =
+        memberLog.values().stream()
+            .flatMap(Collection::stream)
+            .map(Indexed::index)
+            .max(Long::compareTo)
+            .orElseThrow();
+    assertThat(maxIndex).isEqualTo(lastIndex);
     assertMemberLogs(memberLog);
   }
 

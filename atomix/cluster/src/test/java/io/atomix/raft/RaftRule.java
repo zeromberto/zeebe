@@ -396,12 +396,14 @@ public final class RaftRule extends ExternalResource {
     return servers.stream().filter(s -> s.getRole() == Role.FOLLOWER).findFirst();
   }
 
-  public void appendEntries(final int count) {
+  public long appendEntries(final int count) throws Exception {
     final var leader = getLeader().orElseThrow();
 
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < count - 1; i++) {
       appendEntryAsync(leader, 1024);
     }
+
+    return appendEntry();
   }
 
   public long appendEntry() throws Exception {
@@ -446,14 +448,6 @@ public final class RaftRule extends ExternalResource {
         appendListener);
     position += 10;
     return appendListener;
-  }
-
-  public void awaitAppendEntries(final int i) throws Exception {
-    // this call is async
-    appendEntries(i - 1);
-
-    // this awaits the last append
-    appendEntry();
   }
 
   @Override
