@@ -54,6 +54,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.rules.ExternalResource;
@@ -116,16 +117,17 @@ public final class RaftRule extends ExternalResource {
 
   @Override
   protected void after() {
-    servers.forEach(
-        s -> {
-          try {
-            if (s.isRunning()) {
-              s.shutdown().get(30, TimeUnit.SECONDS);
-            }
-          } catch (final Exception e) {
-            // its fine..
-          }
-        });
+    try {
+      CompletableFuture.allOf(
+              servers.stream()
+                  .filter(RaftServer::isRunning)
+                  .map(RaftServer::shutdown)
+                  .toArray(CompletableFuture[]::new))
+          .get(30, TimeUnit.SECONDS);
+    } catch (final Exception e) {
+      // we failed to shutdown server
+    }
+
     servers.clear();
     context.close();
     context = null;
@@ -137,6 +139,7 @@ public final class RaftRule extends ExternalResource {
     memberLog.clear();
     memberLog = null;
     position = 0;
+    directory = null;
   }
 
   /**
@@ -169,22 +172,16 @@ public final class RaftRule extends ExternalResource {
     final CountDownLatch latch = new CountDownLatch(nodes);
 
     for (int i = 0; i < nodes; i++) {
-      final RaftServer server = createServer(members.get(i).memberId());
-      if (members.get(i).getType() == RaftMember.Type.ACTIVE) {
-        server
-            .bootstrap(members.stream().map(RaftMember::memberId).collect(Collectors.toList()))
-            .thenAccept(this::addCommitListener)
-            .thenRun(latch::countDown);
-      } else {
-        server
-            .listen(members.stream().map(RaftMember::memberId).collect(Collectors.toList()))
-            .thenAccept(this::addCommitListener)
-            .thenRun(latch::countDown);
-      }
+      final var raftMember = members.get(i);
+      final RaftServer server = createServer(raftMember.memberId());
+      server
+          .bootstrap(members.stream().map(RaftMember::memberId).collect(Collectors.toList()))
+          .thenAccept(this::addCommitListener)
+          .thenRun(latch::countDown);
       servers.add(server);
     }
 
-    latch.await(30 * nodes, TimeUnit.SECONDS);
+    latch.await(30, TimeUnit.SECONDS);
 
     return servers;
   }
@@ -262,12 +259,6 @@ public final class RaftRule extends ExternalResource {
     return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
   }
 
-  public CompletableFuture<Void> tryToCompactLogOnServer(final String memberId, final long index) {
-    final var raftServer = getRaftServer(memberId);
-    raftServer.getContext().getServiceManager().setCompactableIndex(index);
-    return raftServer.compact();
-  }
-
   private CompletableFuture<Void> tryToCompactLogOnServer(
       final RaftServer raftServer, final long index) {
     raftServer.getContext().getServiceManager().setCompactableIndex(index);
@@ -285,22 +276,22 @@ public final class RaftRule extends ExternalResource {
             new RaftCommitListener() {
               @Override
               public <T extends RaftLogEntry> void onCommit(final Indexed<T> entry) {
-                final var index = entry.index();
+                final var currentIndex = entry.index();
 
-                memberLog.put(raftServer.name(), index);
-                if (highestCommit < index) {
-                  highestCommit = index;
+                memberLog.put(raftServer.name(), currentIndex);
+                if (highestCommit < currentIndex) {
+                  highestCommit = currentIndex;
                 }
 
                 final var commitAwaiter = commitAwaiterRef.get();
-                if (commitAwaiter != null && commitAwaiter.reachedCommit(index)) {
+                if (commitAwaiter != null && commitAwaiter.reachedCommit(currentIndex)) {
                   commitAwaiterRef.set(null);
                 }
               }
             });
   }
 
-  public Map<String, List<Indexed<?>>> getMemberLog() {
+  public Map<String, List<Indexed<?>>> getMemberLogs() {
 
     final Map<String, List<Indexed<?>>> memberLogs = new HashMap<>();
 
@@ -368,7 +359,7 @@ public final class RaftRule extends ExternalResource {
   }
 
   private RaftServer createServer(
-      final MemberId memberId, final Function<Builder, Builder> configurator) {
+      final MemberId memberId, final UnaryOperator<Builder> configurator) {
     final TestRaftServerProtocol protocol = protocolFactory.newServerProtocol(memberId);
     final RaftServer.Builder defaults =
         RaftServer.builder(memberId)
@@ -479,8 +470,8 @@ public final class RaftRule extends ExternalResource {
       this.awaitedIndex = index;
     }
 
-    public boolean reachedCommit(final long index) {
-      if (this.awaitedIndex <= index) {
+    public boolean reachedCommit(final long currentIndex) {
+      if (this.awaitedIndex <= currentIndex) {
         latch.countDown();
         return true;
       }

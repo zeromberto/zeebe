@@ -52,7 +52,7 @@ public class RaftAppendTest {
     // then
     raftRule.awaitCommit(2);
     raftRule.awaitSameLogSizeOnAllNodes();
-    final var memberLog = raftRule.getMemberLog();
+    final var memberLog = raftRule.getMemberLogs();
 
     final var logLength = memberLog.values().stream().map(List::size).findFirst().orElseThrow();
     assertThat(logLength).withFailMessage(memberLog.toString()).isEqualTo(2);
@@ -71,7 +71,7 @@ public class RaftAppendTest {
     // then
     raftRule.awaitCommit(entryCount + 1);
     raftRule.awaitSameLogSizeOnAllNodes();
-    final var memberLog = raftRule.getMemberLog();
+    final var memberLog = raftRule.getMemberLogs();
 
     final var logLength = memberLog.values().stream().map(List::size).findFirst().orElseThrow();
     assertThat(logLength).isEqualTo(entryCount + 1);

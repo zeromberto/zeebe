@@ -58,7 +58,7 @@ public class RaftFailOverTest {
     final var expectedEntryCount = entryCount * 2 + 1;
     raftRule.awaitCommit(expectedEntryCount);
     raftRule.awaitSameLogSizeOnAllNodes();
-    final var memberLog = raftRule.getMemberLog();
+    final var memberLog = raftRule.getMemberLogs();
 
     final var logLength = memberLog.values().stream().map(List::size).findFirst().orElseThrow();
     assertThat(logLength).isEqualTo(expectedEntryCount);
@@ -82,7 +82,7 @@ public class RaftFailOverTest {
     final var expectedEntryCount = entryCount * 2 + 2;
     raftRule.awaitCommit(expectedEntryCount);
     raftRule.awaitSameLogSizeOnAllNodes();
-    final var memberLog = raftRule.getMemberLog();
+    final var memberLog = raftRule.getMemberLogs();
 
     final var logLength = memberLog.values().stream().map(List::size).findFirst().orElseThrow();
     assertThat(logLength).isEqualTo(expectedEntryCount);
@@ -106,7 +106,7 @@ public class RaftFailOverTest {
     final var expectedEntryCount = entryCount * 2 + 2;
     raftRule.awaitCommit(expectedEntryCount);
     raftRule.awaitSameLogSizeOnAllNodes();
-    final var memberLog = raftRule.getMemberLog();
+    final var memberLog = raftRule.getMemberLogs();
 
     final var logLength = memberLog.values().stream().map(List::size).findFirst().orElseThrow();
     assertThat(logLength).isEqualTo(expectedEntryCount);
