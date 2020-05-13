@@ -100,18 +100,18 @@ public final class RaftNamespaces {
       Namespace.builder()
           .register(Namespaces.BASIC)
           .nextId(Namespaces.BEGIN_USER_CUSTOM_ID + 100)
-          .register(Void.class)
-          .register(Void.class)
+          .register(Void.class) // CloseSessionEntry
+          .register(Void.class) // CommandEntry
           .register(ConfigurationEntry.class)
           .register(InitializeEntry.class)
-          .register(Void.class)
-          .register(Void.class)
-          .register(Void.class)
-          .register(Void.class)
-          .register(Void.class)
-          .register(Void.class)
-          .register(Void.class)
-          .register(Void.class)
+          .register(Void.class) // KeepAliveEntry
+          .register(Void.class) // MetadataEntry
+          .register(Void.class) // OpenSessionEntry
+          .register(Void.class) // QueryEntry
+          .register(Void.class) // PrimitiveOperation
+          .register(Void.class) // DefaultOperationId
+          .register(Void.class) // OperationType
+          .register(Void.class) // ReadConsistency
           .register(ArrayList.class)
           .register(HashSet.class)
           .register(DefaultRaftMember.class)
