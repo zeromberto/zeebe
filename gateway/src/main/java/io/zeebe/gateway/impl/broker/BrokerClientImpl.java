@@ -121,7 +121,7 @@ public class BrokerClientImpl implements BrokerClient {
     PartitionAwareRequestLimiter limiter = new NoopPartitionAwareRequestLimiter();
     if (backpressure.isEnabled()) {
       final LimitFactory factory = new LimitFactory();
-      limiter = new PartitionAwareRequestLimiterImpl(factory.ofConfig(configuration));
+      limiter = new PartitionAwareRequestLimiterImpl(() -> factory.ofConfig(configuration));
     }
 
     requestManager =
