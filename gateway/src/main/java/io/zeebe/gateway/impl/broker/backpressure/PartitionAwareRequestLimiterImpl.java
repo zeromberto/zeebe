@@ -12,14 +12,15 @@ import com.netflix.concurrency.limits.Limiter;
 import com.netflix.concurrency.limits.Limiter.Listener;
 import io.zeebe.gateway.impl.broker.request.BrokerRequest;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.agrona.collections.Int2ObjectHashMap;
 
 public final class PartitionAwareRequestLimiterImpl implements PartitionAwareRequestLimiter {
-  private final Limit limit;
   private final Int2ObjectHashMap<Limiter<BrokerRequest<?>>> partitionedLimiters;
+  private final Supplier<Limit> limitSupplier;
 
-  public PartitionAwareRequestLimiterImpl(final Limit limit) {
-    this.limit = limit;
+  public PartitionAwareRequestLimiterImpl(final Supplier<Limit> limitSupplier) {
+    this.limitSupplier = limitSupplier;
     this.partitionedLimiters = new Int2ObjectHashMap<>();
   }
 
@@ -31,6 +32,9 @@ public final class PartitionAwareRequestLimiterImpl implements PartitionAwareReq
   }
 
   private Limiter<BrokerRequest<?>> createLimiter(final int partitionId) {
-    return BrokerRequestLimiter.newBuilder().withPartitionId(partitionId).limit(limit).build();
+    return BrokerRequestLimiter.newBuilder()
+        .withPartitionId(partitionId)
+        .limit(limitSupplier.get())
+        .build();
   }
 }
