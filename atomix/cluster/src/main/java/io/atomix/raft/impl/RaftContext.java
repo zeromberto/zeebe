@@ -79,8 +79,6 @@ import org.slf4j.Logger;
  */
 public class RaftContext implements AutoCloseable {
 
-  private static final int LOAD_WINDOW_SIZE = 5;
-  private static final int HIGH_LOAD_THRESHOLD = 500;
   protected final String name;
   protected final ThreadContext threadContext;
   protected final ClusterMembershipService membershipService;
