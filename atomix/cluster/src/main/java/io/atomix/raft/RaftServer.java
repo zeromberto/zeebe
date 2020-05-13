@@ -574,8 +574,7 @@ public interface RaftServer {
     protected ThreadModel threadModel = DEFAULT_THREAD_MODEL;
     protected int threadPoolSize = DEFAULT_THREAD_POOL_SIZE;
     protected ThreadContextFactory threadContextFactory;
-    protected RaftStateMachineFactory stateMachineFactory =
-        ((raft, stateContext, factory) -> new ZeebeRaftStateMachine(raft));
+    protected RaftStateMachineFactory stateMachineFactory = ZeebeRaftStateMachine::new;
     protected Supplier<JournalIndex> journalIndexFactory;
 
     protected Builder(final MemberId localMemberId) {

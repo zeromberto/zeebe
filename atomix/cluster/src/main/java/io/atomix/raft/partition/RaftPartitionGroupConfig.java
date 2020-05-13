@@ -45,8 +45,8 @@ public class RaftPartitionGroupConfig extends PartitionGroupConfig<RaftPartition
   // was not aware of. The annotation tells Kryo to ignore this field unless a specific serializer
   // is configured for the given key
   @Optional("RaftStateMachineFactory")
-  private RaftStateMachineFactory stateMachineFactory =
-      ((raft, stateContext, threadContextFactory) -> new ZeebeRaftStateMachine(raft));
+  private RaftStateMachineFactory stateMachineFactory = ZeebeRaftStateMachine::new;
+
   /**
    * Returns the compaction configuration.
    *
