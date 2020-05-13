@@ -32,25 +32,16 @@ import java.util.Objects;
  */
 public class ZeebeEntry extends TimestampedEntry {
 
-  private final long lowestPosition;
-  private final long highestPosition;
   private final ByteBuffer data;
 
-  public ZeebeEntry(
-      final long term,
-      final long timestamp,
-      final long lowestPosition,
-      final long highestPosition,
-      final ByteBuffer data) {
+  public ZeebeEntry(final long term, final long timestamp, final ByteBuffer data) {
     super(term, timestamp);
-    this.lowestPosition = lowestPosition;
-    this.highestPosition = highestPosition;
     this.data = data;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), lowestPosition(), highestPosition(), data());
+    return Objects.hash(super.hashCode(), data());
   }
 
   @Override
@@ -68,17 +59,7 @@ public class ZeebeEntry extends TimestampedEntry {
     }
 
     final ZeebeEntry that = (ZeebeEntry) other;
-    return lowestPosition() == that.lowestPosition()
-        && highestPosition() == that.highestPosition()
-        && data().equals(that.data());
-  }
-
-  public long lowestPosition() {
-    return lowestPosition;
-  }
-
-  public long highestPosition() {
-    return highestPosition;
+    return data().equals(that.data());
   }
 
   public ByteBuffer data() {
@@ -87,11 +68,6 @@ public class ZeebeEntry extends TimestampedEntry {
 
   @Override
   public String toString() {
-    return toStringHelper(this)
-        .add("term", term())
-        .add("timestamp", timestamp())
-        .add("lowestPosition", lowestPosition())
-        .add("highestPosition", highestPosition())
-        .toString();
+    return toStringHelper(this).add("term", term()).add("timestamp", timestamp()).toString();
   }
 }

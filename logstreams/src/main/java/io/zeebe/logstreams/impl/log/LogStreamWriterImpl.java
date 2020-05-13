@@ -17,6 +17,7 @@ import static io.zeebe.logstreams.impl.log.LogEntryDescriptor.setSourceEventPosi
 import static io.zeebe.logstreams.impl.log.LogEntryDescriptor.setTimestamp;
 import static io.zeebe.logstreams.impl.log.LogEntryDescriptor.valueOffset;
 
+import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.ClaimedFragment;
 import io.zeebe.dispatcher.Dispatcher;
 import io.zeebe.dispatcher.impl.log.DataFrameDescriptor;
@@ -24,9 +25,13 @@ import io.zeebe.logstreams.log.LogStreamRecordWriter;
 import io.zeebe.util.buffer.BufferWriter;
 import io.zeebe.util.buffer.DirectBufferWriter;
 import io.zeebe.util.sched.clock.ActorClock;
+import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.zip.CRC32;
 import org.agrona.DirectBuffer;
 import org.agrona.LangUtil;
 import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 
 public final class LogStreamWriterImpl implements LogStreamRecordWriter {
   private final DirectBufferWriter metadataWriterInstance = new DirectBufferWriter();
@@ -39,6 +44,8 @@ public final class LogStreamWriterImpl implements LogStreamRecordWriter {
   private long sourceRecordPosition = -1L;
   private BufferWriter metadataWriter;
   private BufferWriter valueWriter;
+  private Queue<Long> eventChecksums = new LinkedBlockingQueue<>();
+  private CRC32 checksum = new CRC32();
 
   LogStreamWriterImpl(final int partitionId, final Dispatcher logWriteBuffer) {
     this.logWriteBuffer = logWriteBuffer;
@@ -129,6 +136,8 @@ public final class LogStreamWriterImpl implements LogStreamRecordWriter {
         final MutableDirectBuffer writeBuffer = claimedFragment.getBuffer();
         final int bufferOffset = claimedFragment.getOffset();
 
+        storeChecksum(writeBuffer, bufferOffset);
+
         // write log entry header
         setPosition(writeBuffer, bufferOffset, claimedPosition);
         setSourceEventPosition(writeBuffer, bufferOffset, sourceRecordPosition);
@@ -144,7 +153,7 @@ public final class LogStreamWriterImpl implements LogStreamRecordWriter {
         valueWriter.write(writeBuffer, valueOffset(bufferOffset, metadataLength));
 
         result = claimedPosition;
-        claimedFragment.commit();
+        claimedFragment.commit(claimedPosition, this::handleWrittenEntry);
       } catch (final Exception e) {
         claimedFragment.abort();
         LangUtil.rethrowUnchecked(e);
@@ -154,6 +163,47 @@ public final class LogStreamWriterImpl implements LogStreamRecordWriter {
     }
 
     return result;
+  }
+
+  private void storeChecksum(MutableDirectBuffer writeBuffer, int bufferOffset) {
+    final int length = metadataWriter.getLength() + valueWriter.getLength();
+    final byte[] buff = new byte[length];
+
+    writeBuffer.getBytes(bufferOffset - length, buff);
+    checksum.reset();
+    checksum.update(buff);
+    eventChecksums.offer(checksum.getValue());
+  }
+
+  private boolean handleWrittenEntry(final ZeebeEntry entry, final Long index) {
+    // iterate on records and poll queue
+    final LoggedEventImpl reader = new LoggedEventImpl();
+    final CRC32 checksum = new CRC32();
+
+    final var view = new UnsafeBuffer(entry.data());
+    var offset = 0;
+    // 8 bytes for the offset
+    // 56 bytes index
+    long recordIndex = index << 8;
+    int entryOffset = 0;
+    do {
+      reader.wrap(view, offset);
+      final byte[] buff = new byte[reader.getLength()];
+      reader.getBuffer().getBytes(offset, buff, 0, reader.getLength());
+      checksum.reset();
+      checksum.update(buff);
+      if (checksum.getValue() != eventChecksums.poll()) {
+        return false;
+      }
+
+      recordIndex += entryOffset;
+      LogEntryDescriptor.setPosition(view, offset, recordIndex);
+
+      offset += reader.getLength();
+      entryOffset++;
+    } while (offset < view.capacity());
+
+    return true;
   }
 
   private long claimLogEntry(final int valueLength, final int metadataLength) {

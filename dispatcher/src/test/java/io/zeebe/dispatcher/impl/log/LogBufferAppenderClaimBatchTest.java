@@ -24,7 +24,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.ClaimedFragmentBatch;
+import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,6 +35,7 @@ import org.mockito.InOrder;
 
 public final class LogBufferAppenderClaimBatchTest {
   private static final Runnable DO_NOTHING = () -> {};
+  private static final BiConsumer<Long, BiPredicate<ZeebeEntry, Long>> ADD_NOTHING = (a, b) -> {};
 
   private static final int PARTITION_ID = 10;
   private static final int PARTITION_LENGTH = 1024;
@@ -89,13 +93,20 @@ public final class LogBufferAppenderClaimBatchTest {
             claimedBatchMock,
             1,
             BATCH_MESSAGE_LENGTH,
-            DO_NOTHING);
+            DO_NOTHING,
+            ADD_NOTHING);
 
     // then
     assertThat(newTail).isEqualTo(currentTail + SINGLE_BATCH_FRAGMENT_LENGTH);
 
     verify(claimedBatchMock)
-        .wrap(dataBufferMock, PARTITION_ID, currentTail, SINGLE_BATCH_FRAGMENT_LENGTH, DO_NOTHING);
+        .wrap(
+            dataBufferMock,
+            PARTITION_ID,
+            currentTail,
+            SINGLE_BATCH_FRAGMENT_LENGTH,
+            DO_NOTHING,
+            ADD_NOTHING);
 
     verify(metadataBufferMock)
         .getAndAddInt(PARTITION_TAIL_COUNTER_OFFSET, SINGLE_BATCH_FRAGMENT_LENGTH);
@@ -118,13 +129,20 @@ public final class LogBufferAppenderClaimBatchTest {
             claimedBatchMock,
             BATCH_FRAGMENT_COUNT,
             BATCH_MESSAGE_LENGTH,
-            DO_NOTHING);
+            DO_NOTHING,
+            ADD_NOTHING);
 
     // then
     assertThat(newTail).isEqualTo(currentTail + BATCH_FRAGMENT_LENGTH);
 
     verify(claimedBatchMock)
-        .wrap(dataBufferMock, PARTITION_ID, currentTail, BATCH_FRAGMENT_LENGTH, DO_NOTHING);
+        .wrap(
+            dataBufferMock,
+            PARTITION_ID,
+            currentTail,
+            BATCH_FRAGMENT_LENGTH,
+            DO_NOTHING,
+            ADD_NOTHING);
 
     verify(metadataBufferMock).getAndAddInt(PARTITION_TAIL_COUNTER_OFFSET, BATCH_FRAGMENT_LENGTH);
     verifyNoMoreInteractions(metadataBufferMock);
@@ -146,13 +164,20 @@ public final class LogBufferAppenderClaimBatchTest {
             claimedBatchMock,
             BATCH_FRAGMENT_COUNT,
             BATCH_MESSAGE_LENGTH,
-            DO_NOTHING);
+            DO_NOTHING,
+            ADD_NOTHING);
 
     // then
     assertThat(newTail).isEqualTo(currentTail + BATCH_FRAGMENT_LENGTH);
 
     verify(claimedBatchMock)
-        .wrap(dataBufferMock, PARTITION_ID, currentTail, BATCH_FRAGMENT_LENGTH, DO_NOTHING);
+        .wrap(
+            dataBufferMock,
+            PARTITION_ID,
+            currentTail,
+            BATCH_FRAGMENT_LENGTH,
+            DO_NOTHING,
+            ADD_NOTHING);
 
     verify(metadataBufferMock).getAndAddInt(PARTITION_TAIL_COUNTER_OFFSET, BATCH_FRAGMENT_LENGTH);
     verifyNoMoreInteractions(metadataBufferMock);
@@ -174,7 +199,8 @@ public final class LogBufferAppenderClaimBatchTest {
             claimedBatchMock,
             BATCH_FRAGMENT_COUNT,
             BATCH_MESSAGE_LENGTH,
-            DO_NOTHING);
+            DO_NOTHING,
+            ADD_NOTHING);
 
     // then
     assertThat(newTail).isEqualTo(-2);
@@ -211,7 +237,8 @@ public final class LogBufferAppenderClaimBatchTest {
             claimedBatchMock,
             BATCH_FRAGMENT_COUNT,
             BATCH_MESSAGE_LENGTH,
-            DO_NOTHING);
+            DO_NOTHING,
+            ADD_NOTHING);
 
     // then
     assertThat(newTail).isEqualTo(-2);
@@ -248,7 +275,8 @@ public final class LogBufferAppenderClaimBatchTest {
             claimedBatchMock,
             BATCH_FRAGMENT_COUNT,
             BATCH_MESSAGE_LENGTH,
-            DO_NOTHING);
+            DO_NOTHING,
+            ADD_NOTHING);
 
     // then
     assertThat(newTail).isEqualTo(-1);

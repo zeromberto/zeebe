@@ -9,6 +9,7 @@ package io.zeebe.logstreams.impl.log;
 
 import com.netflix.concurrency.limits.limit.AbstractLimit;
 import com.netflix.concurrency.limits.limit.WindowedLimit;
+import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.BlockPeek;
 import io.zeebe.dispatcher.Subscription;
 import io.zeebe.logstreams.impl.Loggers;
@@ -32,7 +33,8 @@ import io.zeebe.util.sched.future.CompletableActorFuture;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import org.agrona.concurrent.UnsafeBuffer;
+import java.util.Queue;
+import java.util.function.BiPredicate;
 import org.slf4j.Logger;
 
 /** Consume the write buffer and append the blocks to the distributedlog. */
@@ -49,7 +51,6 @@ public final class LogStorageAppender extends Actor implements HealthMonitorable
   private final AppendLimiter appendEntryLimiter;
   private final AppendBackpressureMetrics appendBackpressureMetrics;
   private final Environment env;
-  private final LoggedEventImpl positionReader = new LoggedEventImpl();
   private FailureListener failureListener;
   private final ActorFuture<Void> closeFuture;
 
@@ -106,27 +107,14 @@ public final class LogStorageAppender extends Actor implements HealthMonitorable
     final ByteBuffer rawBuffer = blockPeek.getRawBuffer();
     final int bytes = rawBuffer.remaining();
     final ByteBuffer copiedBuffer = ByteBuffer.allocate(bytes).put(rawBuffer).flip();
-    final Positions positions = readPositions(copiedBuffer);
 
-    // Commit position is the position of the last event.
-    appendBackpressureMetrics.newEntryToAppend();
-    if (appendEntryLimiter.tryAcquire(positions.highest)) {
-      final var listener = new Listener(positions);
-      appendToStorage(copiedBuffer, positions, listener);
-      blockPeek.markCompleted();
-    } else {
-      appendBackpressureMetrics.deferred();
-      LOG.trace(
-          "Backpressure happens: in flight {} limit {}",
-          appendEntryLimiter.getInflight(),
-          appendEntryLimiter.getLimit());
-      // we will be called later again
-    }
+    final var listener = new Listener(blockPeek.getHandlers());
+    appendToStorage(copiedBuffer, listener);
+    blockPeek.markCompleted();
   }
 
-  private void appendToStorage(
-      final ByteBuffer buffer, final Positions positions, final Listener listener) {
-    logStorage.append(positions.lowest, positions.highest, buffer, listener);
+  private void appendToStorage(final ByteBuffer buffer, final Listener listener) {
+    logStorage.append(buffer, listener);
   }
 
   @Override
@@ -172,19 +160,6 @@ public final class LogStorageAppender extends Actor implements HealthMonitorable
     }
   }
 
-  private Positions readPositions(final ByteBuffer buffer) {
-    final var view = new UnsafeBuffer(buffer);
-    final var positions = new Positions();
-    var offset = 0;
-    do {
-      positionReader.wrap(view, offset);
-      positions.accept(positionReader.getPosition());
-      offset += positionReader.getLength();
-    } while (offset < view.capacity());
-
-    return positions;
-  }
-
   @Override
   public HealthStatus getHealthStatus() {
     return actor.isClosed() ? HealthStatus.UNHEALTHY : HealthStatus.HEALTHY;
@@ -203,21 +178,11 @@ public final class LogStorageAppender extends Actor implements HealthMonitorable
     }
   }
 
-  private static final class Positions {
-    private long lowest = Long.MAX_VALUE;
-    private long highest = Long.MIN_VALUE;
-
-    private void accept(final long position) {
-      lowest = Math.min(lowest, position);
-      highest = Math.max(highest, position);
-    }
-  }
-
   private final class Listener implements AppendListener {
-    private final Positions positions;
+    private final Queue<BiPredicate<ZeebeEntry, Long>> handlers;
 
-    private Listener(final Positions positions) {
-      this.positions = positions;
+    private Listener(Queue<BiPredicate<ZeebeEntry, Long>> handlers) {
+      this.handlers = handlers;
     }
 
     @Override
@@ -225,7 +190,7 @@ public final class LogStorageAppender extends Actor implements HealthMonitorable
 
     @Override
     public void onWriteError(final Throwable error) {
-      LOG.error("Failed to append block with last event position {}.", positions.highest, error);
+      LOG.error("Failed to append block.", error);
       if (error instanceof NoSuchElementException) {
         // Not a failure. It is probably during transition to follower.
         return;
@@ -240,13 +205,23 @@ public final class LogStorageAppender extends Actor implements HealthMonitorable
 
     @Override
     public void onCommitError(final long address, final Throwable error) {
-      LOG.error("Failed to commit block with last event position {}.", positions.highest, error);
+      LOG.error("Failed to commit block.", error);
       releaseBackPressure();
       actor.run(() -> onFailure(error));
     }
 
+    @Override
+    public boolean canAppend(final ZeebeEntry entry, final long index) {
+      final BiPredicate<ZeebeEntry, Long> handler = handlers.poll();
+      if (handler == null) {
+        throw new IllegalStateException("Expected to have handler for entry but none was found.");
+      }
+
+      return handler.test(entry, index);
+    }
+
     private void releaseBackPressure() {
-      actor.run(() -> appendEntryLimiter.onCommit(positions.highest));
+      //      actor.run(() -> appendEntryLimiter.onCommit(positions.highest));
     }
   }
 }

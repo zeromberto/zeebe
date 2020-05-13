@@ -22,6 +22,7 @@ import static io.zeebe.util.EnsureUtil.ensureNotNull;
 import static org.agrona.BitUtil.SIZE_OF_INT;
 import static org.agrona.BitUtil.SIZE_OF_LONG;
 
+import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.ClaimedFragmentBatch;
 import io.zeebe.dispatcher.Dispatcher;
 import io.zeebe.logstreams.log.LogStreamBatchWriter;
@@ -30,10 +31,14 @@ import io.zeebe.protocol.Protocol;
 import io.zeebe.util.buffer.BufferWriter;
 import io.zeebe.util.buffer.DirectBufferWriter;
 import io.zeebe.util.sched.clock.ActorClock;
+import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.zip.CRC32;
 import org.agrona.DirectBuffer;
 import org.agrona.ExpandableDirectByteBuffer;
 import org.agrona.LangUtil;
 import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 
 public final class LogStreamBatchWriterImpl implements LogStreamBatchWriter, LogEntryBuilder {
   private static final int INITIAL_BUFFER_CAPACITY = 1024 * 32;
@@ -60,6 +65,8 @@ public final class LogStreamBatchWriterImpl implements LogStreamBatchWriter, Log
 
   private BufferWriter metadataWriter;
   private BufferWriter valueWriter;
+  private Queue<Long> eventChecksums = new LinkedBlockingQueue<>();
+  private CRC32 checksum = new CRC32();
 
   LogStreamBatchWriterImpl(final int partitionId, final Dispatcher dispatcher) {
     this.logWriteBuffer = dispatcher;
@@ -78,6 +85,7 @@ public final class LogStreamBatchWriterImpl implements LogStreamBatchWriter, Log
   public LogEntryBuilder event() {
     copyExistingEventToBuffer();
     resetEvent();
+
     return this;
   }
 
@@ -149,6 +157,14 @@ public final class LogStreamBatchWriterImpl implements LogStreamBatchWriter, Log
   public LogStreamBatchWriter done() {
     ensureNotNull("value", valueWriter);
     copyExistingEventToBuffer();
+    final int length = metadataWriter.getLength() + valueWriter.getLength();
+    final byte[] buff = new byte[length];
+
+    eventBuffer.getBytes(eventBufferOffset - length, buff);
+    checksum.reset();
+    checksum.update(buff);
+    eventChecksums.offer(checksum.getValue());
+
     resetEvent();
     return this;
   }
@@ -203,7 +219,7 @@ public final class LogStreamBatchWriterImpl implements LogStreamBatchWriter, Log
         // return position of last event
         result = writeEventsToBuffer(claimedBatch.getBuffer());
 
-        claimedBatch.commit();
+        claimedBatch.commit(this::canAppendBatch);
       } catch (final Exception e) {
         claimedBatch.abort();
         LangUtil.rethrowUnchecked(e);
@@ -214,10 +230,43 @@ public final class LogStreamBatchWriterImpl implements LogStreamBatchWriter, Log
     return result;
   }
 
+  private boolean canAppendBatch(final ZeebeEntry entry, final Long index) {
+    // iterate on records and poll queue
+    final LoggedEventImpl reader = new LoggedEventImpl();
+    final CRC32 checksum = new CRC32();
+
+    final var view = new UnsafeBuffer(entry.data());
+    var offset = 0;
+    // 8 bytes for the offset
+    // 56 bytes index
+    long recordIndex = index << 8;
+    int entryOffset = 0;
+    do {
+      reader.wrap(view, offset);
+      final byte[] buff = new byte[reader.getLength()];
+      reader.getBuffer().getBytes(offset, buff, 0, reader.getLength());
+      checksum.reset();
+      checksum.update(buff);
+
+      // TODO: return false and log warning?
+      if (checksum.getValue() != eventChecksums.poll()) {
+        return false;
+      }
+
+      recordIndex += entryOffset;
+      LogEntryDescriptor.setPosition(view, offset, recordIndex);
+
+      offset += reader.getLength();
+      entryOffset++;
+    } while (offset < view.capacity());
+
+    return true;
+  }
+
   private long claimBatchForEvents() {
     final int batchLength = eventLength + (eventCount * HEADER_BLOCK_LENGTH);
 
-    long claimedPosition = -1;
+    long claimedPosition;
     do {
       claimedPosition = logWriteBuffer.claim(claimedBatch, eventCount, batchLength);
     } while (claimedPosition == RESULT_PADDING_AT_END_OF_PARTITION);
