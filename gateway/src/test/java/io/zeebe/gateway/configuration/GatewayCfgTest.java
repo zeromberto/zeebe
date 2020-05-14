@@ -57,6 +57,7 @@ public class GatewayCfgTest {
         .setHost("1.2.3.4")
         .setPort(12321);
     CUSTOM_CFG.getThreads().setManagementThreads(100);
+    CUSTOM_CFG.getBackpressure().getAimdCfg().setRequestTimeout("100s");
   }
 
   private final Map<String, String> environment = new HashMap<>();
@@ -145,6 +146,7 @@ public class GatewayCfgTest {
         .setPort(12345);
     expected.getThreads().setManagementThreads(32);
     expected.getMonitoring().setEnabled(true).setHost("monitorHost").setPort(231);
+    expected.getBackpressure().getAimdCfg().setRequestTimeout("100s");
 
     // when
     final GatewayCfg gatewayCfg = readCustomConfig();

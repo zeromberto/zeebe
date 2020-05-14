@@ -10,6 +10,7 @@ package io.zeebe.gateway.impl.configuration;
 import io.zeebe.util.DurationUtil;
 import io.zeebe.util.Environment;
 import java.time.Duration;
+import java.util.Objects;
 
 public class AIMDCfg {
 
@@ -23,7 +24,7 @@ public class AIMDCfg {
     return DurationUtil.parse(requestTimeout);
   }
 
-  private AIMDCfg setRequestTimeout(final String requestTimeout) {
+  public AIMDCfg setRequestTimeout(final String requestTimeout) {
     this.requestTimeout = requestTimeout;
     return this;
   }
@@ -68,6 +69,27 @@ public class AIMDCfg {
     if (requestTimeout == null) {
       setRequestTimeout(gatewayCfg.getCluster().getRequestTimeout().toMillis() + "ms");
     }
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final AIMDCfg aimdCfg = (AIMDCfg) o;
+    return initialLimit == aimdCfg.initialLimit &&
+        minLimit == aimdCfg.minLimit &&
+        maxLimit == aimdCfg.maxLimit &&
+        Double.compare(aimdCfg.backoffRatio, backoffRatio) == 0 &&
+        Objects.equals(requestTimeout, aimdCfg.requestTimeout);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(requestTimeout, initialLimit, minLimit, maxLimit, backoffRatio);
   }
 
   @Override

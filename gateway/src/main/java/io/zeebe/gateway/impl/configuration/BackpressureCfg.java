@@ -8,6 +8,7 @@
 package io.zeebe.gateway.impl.configuration;
 
 import io.zeebe.util.Environment;
+import java.util.Objects;
 
 public final class BackpressureCfg {
 
@@ -40,6 +41,24 @@ public final class BackpressureCfg {
 
   public enum LimitAlgorithm {
     AIMD,
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final BackpressureCfg that = (BackpressureCfg) o;
+    return enabled == that.enabled &&
+        Objects.equals(aimd, that.aimd);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(enabled, aimd);
   }
 
   @Override
