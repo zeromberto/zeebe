@@ -9,6 +9,7 @@ package io.zeebe.gateway.broker;
 
 import static io.zeebe.protocol.Protocol.START_PARTITION_ID;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +17,7 @@ import io.atomix.cluster.AtomixCluster;
 import io.atomix.cluster.ClusterMembershipService;
 import io.zeebe.gateway.impl.broker.BrokerClient;
 import io.zeebe.gateway.impl.broker.BrokerClientImpl;
+import io.zeebe.gateway.impl.broker.backpressure.ResourceExhaustedException;
 import io.zeebe.gateway.impl.broker.cluster.BrokerClusterStateImpl;
 import io.zeebe.gateway.impl.broker.cluster.BrokerTopologyManagerImpl;
 import io.zeebe.gateway.impl.broker.request.BrokerActivateJobsRequest;
@@ -65,7 +67,8 @@ public class BrokerClientBackPressureTest {
         .getAimdCfg()
         .setInitialLimit(1)
         .setMinLimit(1)
-        .setMaxLimit(1);
+        .setMaxLimit(1)
+        .setRequestTimeout("3s");
     clock = new ControlledActorClock();
 
     final AtomixCluster atomixCluster = mock(AtomixCluster.class);
@@ -95,13 +98,12 @@ public class BrokerClientBackPressureTest {
     request.setPartitionId(1);
     client.sendRequest(request);
 
-    // then
-    exception.expect(ExecutionException.class);
-    exception.expectMessage(
-        "Congestion detected for partition 1, load will be limited until there is no more congestion");
-
-    // when
-    client.sendRequest(request).join();
+    // when - then
+    assertThatThrownBy(() -> client.sendRequest(request).join())
+        .isInstanceOf(ExecutionException.class)
+        .hasCause(new ResourceExhaustedException(1))
+        .hasMessage(
+            "Congestion detected for partition 1, load will be limited until there is no more congestion");
   }
 
   @Test
