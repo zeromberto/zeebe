@@ -8,7 +8,7 @@ volumes:
 services:
 
     broker-1:
-        image: gcr.io/zeebe-io/zeebe:${ZEEBE_VERSION:-latest}
+        image: camunda/zeebe:${ZEEBE_VERSION:-latest}
         ports:
             - 26500:26500
         environment:
@@ -16,13 +16,12 @@ services:
             - ZEEBE_NODE_ID=0
             - ZEEBE_PARTITIONS_COUNT=3
             - ZEEBE_CLUSTER_SIZE=3
-            - ZEEBE_REPLICATION_FACTOR=1
-            - ZEEBE_PARTITION_DELAY_MS_2=5000
+            - ZEEBE_REPLICATION_FACTOR=3
         volumes:
             - broker_1:/usr/local/zeebe/data
 
     broker-2:
-        image: gcr.io/zeebe-io/zeebe:${ZEEBE_VERSION:-latest}
+        image: camunda/zeebe:${ZEEBE_VERSION:-latest}
         ports:
             - 26510:26500
         environment:
@@ -30,14 +29,13 @@ services:
             - ZEEBE_NODE_ID=1
             - ZEEBE_PARTITIONS_COUNT=3
             - ZEEBE_CLUSTER_SIZE=3
-            - ZEEBE_REPLICATION_FACTOR=1
+            - ZEEBE_REPLICATION_FACTOR=3
             - ZEEBE_CONTACT_POINTS=broker-1:26502
-            - ZEEBE_PARTITION_DELAY_MS_2=5000
         volumes:
             - broker_2:/usr/local/zeebe/data
 
     broker-3:
-        image: gcr.io/zeebe-io/zeebe:${ZEEBE_VERSION:-latest}
+        image: camunda/zeebe:${ZEEBE_VERSION:-latest}
         ports:
             - 26520:26500
         environment:
@@ -45,8 +43,7 @@ services:
             - ZEEBE_NODE_ID=2
             - ZEEBE_PARTITIONS_COUNT=3
             - ZEEBE_CLUSTER_SIZE=3
-            - ZEEBE_REPLICATION_FACTOR=1
+            - ZEEBE_REPLICATION_FACTOR=3
             - ZEEBE_CONTACT_POINTS=broker-1:26502
-            - ZEEBE_PARTITION_DELAY_MS_2=5000
         volumes:
             - broker_3:/usr/local/zeebe/data
