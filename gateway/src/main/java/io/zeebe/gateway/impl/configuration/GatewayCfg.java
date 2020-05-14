@@ -32,7 +32,7 @@ public class GatewayCfg {
     cluster.init(environment);
     threads.init(environment);
     monitoring.init(environment, defaultHost);
-    backpressure.init(environment);
+    backpressure.init(environment, this);
   }
 
   public NetworkCfg getNetwork() {

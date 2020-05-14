@@ -14,11 +14,12 @@ public final class BackpressureCfg {
   private boolean enabled = true;
   private final AIMDCfg aimd = new AIMDCfg();
 
-  public void init(final Environment environment) {
+  public void init(final Environment environment,
+      final GatewayCfg gatewayCfg) {
     environment
         .getBool(EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_ENABLED)
         .ifPresent(this::setEnabled);
-    aimd.init(environment);
+    aimd.init(environment, gatewayCfg);
   }
 
   public boolean isEnabled() {

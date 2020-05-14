@@ -28,6 +28,7 @@ import io.zeebe.util.Environment;
 import io.zeebe.util.TomlConfigurationReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Test;
@@ -98,6 +99,20 @@ public class GatewayCfgTest {
     assertThat(backpressure.isEnabled()).isTrue();
     assertThat(backpressure.getAimdCfg().getBackoffRatio()).isEqualTo(0.5);
     assertThat(backpressure.getAimdCfg().getInitialLimit()).isEqualTo(50);
+    assertThat(backpressure.getAimdCfg().getRequestTimeout()).isEqualTo(Duration.ofSeconds(5));
+  }
+
+  @Test
+  public void shouldConfigureBackPressureRequestTimeoutFromGateway() {
+
+    // when
+    final GatewayCfg gatewayCfg = readConfig(DEFAULT_CFG_FILENAME);
+
+    // then
+    final BackpressureCfg backpressure = gatewayCfg.getBackpressure();
+    assertThat(backpressure.isEnabled()).isTrue();
+    assertThat(backpressure.getAimdCfg().getRequestTimeout())
+        .isEqualTo(gatewayCfg.getCluster().getRequestTimeout());
   }
 
   @Test

@@ -13,7 +13,7 @@ import java.time.Duration;
 
 public class AIMDCfg {
 
-  private String requestTimeout = "15s";
+  private String requestTimeout;
   private int initialLimit = 100;
   private int minLimit = 1;
   private int maxLimit = 1000;
@@ -64,7 +64,11 @@ public class AIMDCfg {
     return this;
   }
 
-  public void init(final Environment environment) {}
+  public void init(final Environment environment, GatewayCfg gatewayCfg) {
+    if (requestTimeout == null) {
+      setRequestTimeout(gatewayCfg.getCluster().getRequestTimeout().toMillis() + "ms");
+    }
+  }
 
   @Override
   public String toString() {
