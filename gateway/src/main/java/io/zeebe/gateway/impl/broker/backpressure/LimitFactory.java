@@ -9,6 +9,7 @@ package io.zeebe.gateway.impl.broker.backpressure;
 
 import com.netflix.concurrency.limits.Limit;
 import com.netflix.concurrency.limits.limit.AIMDLimit;
+import com.netflix.concurrency.limits.limit.FixedLimit;
 import io.zeebe.gateway.impl.configuration.AIMDCfg;
 import io.zeebe.gateway.impl.configuration.BackpressureCfg;
 import io.zeebe.gateway.impl.configuration.BackpressureCfg.LimitAlgorithm;
@@ -23,12 +24,18 @@ public final class LimitFactory {
     switch (algorithm) {
       case AIMD:
         return newAimdLimit(config);
+      case FIXED:
+        return newFixedLimit(config);
       default:
         throw new IllegalArgumentException(
             String.format(
                 "Expected one of the following algorithms [%s], but got %s",
                 Arrays.toString(BackpressureCfg.LimitAlgorithm.values()), algorithm));
     }
+  }
+
+  private FixedLimit newFixedLimit(final BackpressureCfg config) {
+    return FixedLimit.of(config.getFixedLimit().getLimit());
   }
 
   private AIMDLimit newAimdLimit(final BackpressureCfg backpressureCfg) {

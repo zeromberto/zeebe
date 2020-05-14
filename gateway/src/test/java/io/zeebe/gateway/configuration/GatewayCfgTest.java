@@ -7,6 +7,10 @@
  */
 package io.zeebe.gateway.configuration;
 
+import static io.zeebe.gateway.impl.configuration.EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_AIMD_BACKOFF_RATIO;
+import static io.zeebe.gateway.impl.configuration.EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_AIMD_INITIAL_LIMIT;
+import static io.zeebe.gateway.impl.configuration.EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_AIMD_MAX_LIMIT;
+import static io.zeebe.gateway.impl.configuration.EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_AIMD_REQUEST_TIMEOUT;
 import static io.zeebe.gateway.impl.configuration.EnvironmentConstants.ENV_GATEWAY_CLUSTER_HOST;
 import static io.zeebe.gateway.impl.configuration.EnvironmentConstants.ENV_GATEWAY_CLUSTER_MEMBER_ID;
 import static io.zeebe.gateway.impl.configuration.EnvironmentConstants.ENV_GATEWAY_CLUSTER_NAME;
@@ -132,6 +136,10 @@ public class GatewayCfgTest {
     setEnv(ENV_GATEWAY_MONITORING_ENABLED, "true");
     setEnv(ENV_GATEWAY_MONITORING_HOST, "monitorHost");
     setEnv(ENV_GATEWAY_MONITORING_PORT, "231");
+    setEnv(ENV_GATEWAY_BACKPRESSURE_AIMD_BACKOFF_RATIO, "0.75");
+    setEnv(ENV_GATEWAY_BACKPRESSURE_AIMD_INITIAL_LIMIT, "123");
+    setEnv(ENV_GATEWAY_BACKPRESSURE_AIMD_MAX_LIMIT, "1234");
+    setEnv(ENV_GATEWAY_BACKPRESSURE_AIMD_REQUEST_TIMEOUT, "13s");
 
     final GatewayCfg expected = new GatewayCfg();
     expected.getNetwork().setHost("zeebe").setPort(5432);
@@ -146,7 +154,13 @@ public class GatewayCfgTest {
         .setPort(12345);
     expected.getThreads().setManagementThreads(32);
     expected.getMonitoring().setEnabled(true).setHost("monitorHost").setPort(231);
-    expected.getBackpressure().getAimdCfg().setRequestTimeout("100s");
+    expected
+        .getBackpressure()
+        .getAimdCfg()
+        .setRequestTimeout("13s")
+        .setBackoffRatio(0.75)
+        .setInitialLimit(123)
+        .setMaxLimit(1234);
 
     // when
     final GatewayCfg gatewayCfg = readCustomConfig();

@@ -66,9 +66,30 @@ public class AIMDCfg {
   }
 
   public void init(final Environment environment, GatewayCfg gatewayCfg) {
+    environment
+        .get(EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_AIMD_BACKOFF_RATIO)
+        .map(Double::parseDouble)
+        .ifPresent(this::setBackoffRatio);
+    environment
+        .getInt(EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_AIMD_INITIAL_LIMIT)
+        .ifPresent(this::setInitialLimit);
+    environment
+        .getInt(EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_AIMD_MIN_LIMIT)
+        .ifPresent(this::setMinLimit);
+    environment
+        .getInt(EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_AIMD_MAX_LIMIT)
+        .ifPresent(this::setMaxLimit);
+    environment
+        .get(EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_AIMD_REQUEST_TIMEOUT)
+        .ifPresent(this::setRequestTimeout);
     if (requestTimeout == null) {
       setRequestTimeout(gatewayCfg.getCluster().getRequestTimeout().toMillis() + "ms");
     }
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(requestTimeout, initialLimit, minLimit, maxLimit, backoffRatio);
   }
 
   @Override
@@ -85,11 +106,6 @@ public class AIMDCfg {
         && maxLimit == aimdCfg.maxLimit
         && Double.compare(aimdCfg.backoffRatio, backoffRatio) == 0
         && Objects.equals(requestTimeout, aimdCfg.requestTimeout);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(requestTimeout, initialLimit, minLimit, maxLimit, backoffRatio);
   }
 
   @Override

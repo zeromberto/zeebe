@@ -13,13 +13,16 @@ import java.util.Objects;
 public final class BackpressureCfg {
 
   private boolean enabled = true;
+  private String algorithm = "aimd";
   private final AIMDCfg aimd = new AIMDCfg();
+  private final FixedLimitCfg fixedLimit = new FixedLimitCfg();
 
   public void init(final Environment environment, final GatewayCfg gatewayCfg) {
     environment
         .getBool(EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_ENABLED)
         .ifPresent(this::setEnabled);
     aimd.init(environment, gatewayCfg);
+    fixedLimit.init(environment);
   }
 
   public boolean isEnabled() {
@@ -32,15 +35,20 @@ public final class BackpressureCfg {
   }
 
   public LimitAlgorithm getAlgorithm() {
-    return LimitAlgorithm.AIMD;
+    return LimitAlgorithm.valueOf(algorithm.toUpperCase());
   }
 
   public AIMDCfg getAimdCfg() {
     return aimd;
   }
 
-  public enum LimitAlgorithm {
-    AIMD,
+  public FixedLimitCfg getFixedLimit() {
+    return this.fixedLimit;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(enabled, aimd, fixedLimit);
   }
 
   @Override
@@ -52,16 +60,25 @@ public final class BackpressureCfg {
       return false;
     }
     final BackpressureCfg that = (BackpressureCfg) o;
-    return enabled == that.enabled && Objects.equals(aimd, that.aimd);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(enabled, aimd);
+    return enabled == that.enabled
+        && Objects.equals(aimd, that.aimd)
+        && Objects.equals(fixedLimit, that.fixedLimit);
   }
 
   @Override
   public String toString() {
-    return "BackpressureCfg{" + "enabled=" + enabled + ", aimd=" + aimd + '}';
+    return "BackpressureCfg{"
+        + "enabled="
+        + enabled
+        + ", aimd="
+        + aimd
+        + ", fixedLimit="
+        + fixedLimit
+        + '}';
+  }
+
+  public enum LimitAlgorithm {
+    AIMD,
+    FIXED,
   }
 }
