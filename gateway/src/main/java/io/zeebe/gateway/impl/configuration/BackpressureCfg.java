@@ -52,8 +52,7 @@ public final class BackpressureCfg {
       return false;
     }
     final BackpressureCfg that = (BackpressureCfg) o;
-    return enabled == that.enabled &&
-        Objects.equals(aimd, that.aimd);
+    return enabled == that.enabled && Objects.equals(aimd, that.aimd);
   }
 
   @Override

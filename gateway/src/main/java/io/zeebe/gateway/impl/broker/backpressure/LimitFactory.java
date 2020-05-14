@@ -12,18 +12,17 @@ import com.netflix.concurrency.limits.limit.AIMDLimit;
 import io.zeebe.gateway.impl.configuration.AIMDCfg;
 import io.zeebe.gateway.impl.configuration.BackpressureCfg;
 import io.zeebe.gateway.impl.configuration.BackpressureCfg.LimitAlgorithm;
-import io.zeebe.gateway.impl.configuration.GatewayCfg;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 public final class LimitFactory {
-  public Limit ofConfig(final GatewayCfg config) {
-    final LimitAlgorithm algorithm = config.getBackpressure().getAlgorithm();
+  public Limit ofConfig(final BackpressureCfg config) {
+    final LimitAlgorithm algorithm = config.getAlgorithm();
 
     switch (algorithm) {
       case AIMD:
-        return newAimdLimit(config.getBackpressure());
+        return newAimdLimit(config);
       default:
         throw new IllegalArgumentException(
             String.format(

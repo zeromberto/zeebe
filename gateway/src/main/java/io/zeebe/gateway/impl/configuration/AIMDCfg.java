@@ -80,11 +80,11 @@ public class AIMDCfg {
       return false;
     }
     final AIMDCfg aimdCfg = (AIMDCfg) o;
-    return initialLimit == aimdCfg.initialLimit &&
-        minLimit == aimdCfg.minLimit &&
-        maxLimit == aimdCfg.maxLimit &&
-        Double.compare(aimdCfg.backoffRatio, backoffRatio) == 0 &&
-        Objects.equals(requestTimeout, aimdCfg.requestTimeout);
+    return initialLimit == aimdCfg.initialLimit
+        && minLimit == aimdCfg.minLimit
+        && maxLimit == aimdCfg.maxLimit
+        && Double.compare(aimdCfg.backoffRatio, backoffRatio) == 0
+        && Objects.equals(requestTimeout, aimdCfg.requestTimeout);
   }
 
   @Override
