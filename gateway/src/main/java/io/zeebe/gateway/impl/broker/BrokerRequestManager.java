@@ -195,7 +195,13 @@ public class BrokerRequestManager extends Actor {
                 responseConsumer.accept(response, null);
               } else {
                 wasDropped = (error instanceof RequestTimeoutException);
-                responseConsumer.accept(null, error);
+                responseConsumer.accept(
+                    null,
+                    new ClientResponseException(
+                        String.format(
+                            "Error processing request %s sent to partition %d, %s",
+                            request, request.getPartitionId(), error.getMessage()),
+                        error));
               }
             } catch (final RuntimeException e) {
               responseConsumer.accept(null, new ClientResponseException(e));
