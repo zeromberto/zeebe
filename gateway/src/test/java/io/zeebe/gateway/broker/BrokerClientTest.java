@@ -63,13 +63,13 @@ import org.junit.rules.TestName;
 
 public class BrokerClientTest {
 
+  private static final int CLIENT_MAX_REQUESTS = 128;
   @Rule public StubBrokerRule broker = new StubBrokerRule();
   @Rule public AutoCloseableRule closeables = new AutoCloseableRule();
   @Rule public ExpectedException exception = ExpectedException.none();
   @Rule public TestName testContext = new TestName();
   private BrokerClient client;
   private ControlledActorClock clock;
-  private static final int CLIENT_MAX_REQUESTS = 128;
 
   @Before
   public void setUp() {
@@ -79,6 +79,11 @@ public class BrokerClientTest {
         .setHost("0.0.0.0")
         .setPort(SocketUtil.getNextAddress().port())
         .setContactPoint(broker.getSocketAddress().toString())
+        .setRequestTimeout("3s");
+    configuration
+        .getBackpressure()
+        .getAimdCfg()
+        .setInitialLimit(CLIENT_MAX_REQUESTS * 2)
         .setRequestTimeout("3s");
     clock = new ControlledActorClock();
 
@@ -322,7 +327,11 @@ public class BrokerClientTest {
     exception.expectMessage("Request timed out after PT3S");
 
     // when
-    client.sendRequest(new BrokerCompleteJobRequest(1, DocumentValue.EMPTY_DOCUMENT)).join();
+    client
+        .sendRequest(
+            new BrokerCompleteJobRequest(
+                Protocol.encodePartitionId(1, 1), DocumentValue.EMPTY_DOCUMENT))
+        .join();
   }
 
   @Test
@@ -388,11 +397,6 @@ public class BrokerClientTest {
     builder.register();
   }
 
-  protected enum ConnectionState {
-    CONNECTED,
-    CLOSED
-  }
-
   protected static class LoggingChannelListener implements TransportListener {
 
     List<ConnectionState> connectionState = new CopyOnWriteArrayList<>();
@@ -406,5 +410,10 @@ public class BrokerClientTest {
     public void onConnectionClosed(final RemoteAddress remoteAddress) {
       connectionState.add(ConnectionState.CLOSED);
     }
+  }
+
+  protected enum ConnectionState {
+    CONNECTED,
+    CLOSED
   }
 }
