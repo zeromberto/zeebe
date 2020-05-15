@@ -11,12 +11,12 @@ import static io.zeebe.dispatcher.impl.PositionUtil.position;
 
 import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.impl.log.DataFrameDescriptor;
+import io.zeebe.dispatcher.impl.log.QuadFunction;
 import io.zeebe.util.sched.ActorCondition;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.function.BiPredicate;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
@@ -34,7 +34,8 @@ public class BlockPeek implements Iterable<DirectBuffer> {
   private int newPartitionId;
   private int newPartitionOffset;
   private ActorCondition dataConsumed;
-  private Queue<BiPredicate<ZeebeEntry, Long>> handlers = new ConcurrentLinkedQueue<>();
+  private Queue<QuadFunction<ZeebeEntry, Long, Integer, Integer>> handlers =
+      new ConcurrentLinkedQueue<>();
 
   public void setBlock(
       final ByteBuffer byteBuffer,
@@ -123,11 +124,11 @@ public class BlockPeek implements Iterable<DirectBuffer> {
     return iterator;
   }
 
-  public Queue<BiPredicate<ZeebeEntry, Long>> getHandlers() {
+  public Queue<QuadFunction<ZeebeEntry, Long, Integer, Integer>> getHandlers() {
     return handlers;
   }
 
-  public void addHandler(final BiPredicate<ZeebeEntry, Long> handler) {
+  public void addHandler(final QuadFunction<ZeebeEntry, Long, Integer, Integer> handler) {
     handlers.add(handler);
   }
 

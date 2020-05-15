@@ -24,9 +24,9 @@ import static org.agrona.UnsafeAccess.UNSAFE;
 
 import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.impl.log.DataFrameDescriptor;
+import io.zeebe.dispatcher.impl.log.QuadFunction;
 import java.util.Queue;
 import java.util.function.BiConsumer;
-import java.util.function.BiPredicate;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 
@@ -53,7 +53,7 @@ public class ClaimedFragmentBatch {
   private int nextOffset;
 
   private Runnable onCompleteHandler;
-  private BiConsumer<Long, BiPredicate<ZeebeEntry, Long>> addHandler;
+  private BiConsumer<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>> addHandler;
 
   public ClaimedFragmentBatch() {
     buffer = new UnsafeBuffer(0, 0);
@@ -65,7 +65,7 @@ public class ClaimedFragmentBatch {
       final int fragmentOffset,
       final int fragmentLength,
       Runnable onCompleteHandler,
-      final BiConsumer<Long, BiPredicate<ZeebeEntry, Long>> addHandler) {
+      final BiConsumer<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>> addHandler) {
     buffer.wrap(underlyingBuffer, fragmentOffset, fragmentLength);
 
     this.partitionId = partitionId;
@@ -127,7 +127,7 @@ public class ClaimedFragmentBatch {
    *
    * @param handler
    */
-  public void commit(BiPredicate<ZeebeEntry, Long> handler) {
+  public void commit(QuadFunction<ZeebeEntry, Long, Integer, Integer> handler) {
     final int firstFragmentFramedLength = -buffer.getInt(lengthOffset(FIRST_FRAGMENT_OFFSET));
 
     // do not set batch flags if only one fragment in the batch

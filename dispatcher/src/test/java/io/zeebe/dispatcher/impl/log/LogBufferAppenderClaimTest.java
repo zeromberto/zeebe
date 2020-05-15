@@ -30,7 +30,6 @@ import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.ClaimedFragment;
 import java.nio.charset.StandardCharsets;
 import java.util.function.BiConsumer;
-import java.util.function.BiPredicate;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,7 +43,8 @@ public final class LogBufferAppenderClaimTest {
   static final int A_PARTITION_ID = 10;
   static final int A_STREAM_ID = 20;
   private static final Runnable DO_NOTHING = () -> {};
-  private static final BiConsumer<Long, BiPredicate<ZeebeEntry, Long>> ADD_NOTHING = (a, b) -> {};
+  private static final BiConsumer<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>>
+      ADD_NOTHING = (a, b) -> {};
 
   UnsafeBuffer metadataBufferMock;
   UnsafeBuffer dataBufferMock;
@@ -111,7 +111,7 @@ public final class LogBufferAppenderClaimTest {
   }
 
   @Test
-  public void shouldClaimIfRemaingCapacityIsEqualHeaderSize() {
+  public void shouldClaimIfRemainingCapacityIsEqualHeaderSize() {
     // given
     // that the message + next message header EXACTLY fit into the buffer
     final int currentTail = A_PARTITION_LENGTH - HEADER_LENGTH - A_FRAGMENT_LENGTH;

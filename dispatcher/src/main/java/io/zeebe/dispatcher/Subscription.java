@@ -27,12 +27,12 @@ import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.impl.log.DataFrameDescriptor;
 import io.zeebe.dispatcher.impl.log.LogBuffer;
 import io.zeebe.dispatcher.impl.log.LogBufferPartition;
+import io.zeebe.dispatcher.impl.log.QuadFunction;
 import io.zeebe.util.sched.ActorCondition;
 import io.zeebe.util.sched.channel.ActorConditions;
 import io.zeebe.util.sched.channel.ConsumableChannel;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.function.BiPredicate;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
 
@@ -48,7 +48,7 @@ public class Subscription implements ConsumableChannel {
   protected final String name;
   protected final ActorCondition dataConsumed;
   protected final ByteBuffer rawDispatcherBufferView;
-  private final Map<Long, BiPredicate<ZeebeEntry, Long>> handlers;
+  private final Map<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>> handlers;
 
   protected volatile boolean isClosed = false;
 
@@ -59,7 +59,7 @@ public class Subscription implements ConsumableChannel {
       final String name,
       final ActorCondition onConsumption,
       final LogBuffer logBuffer,
-      Map<Long, BiPredicate<ZeebeEntry, Long>> handlers) {
+      Map<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>> handlers) {
     this.position = position;
     this.id = id;
     this.name = name;
@@ -351,7 +351,7 @@ public class Subscription implements ConsumableChannel {
           if (!isReadingBatch) {
             // if we just finished reading the batch, store the handler
             if (batchStartPos != -1) {
-              final BiPredicate<ZeebeEntry, Long> handler = handlers.remove(batchStartPos);
+              var handler = handlers.remove(batchStartPos);
               if (handler == null) {
                 throw new IllegalStateException(
                     String.format(

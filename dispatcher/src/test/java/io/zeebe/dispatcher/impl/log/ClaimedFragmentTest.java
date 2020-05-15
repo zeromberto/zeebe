@@ -15,14 +15,14 @@ import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.ClaimedFragment;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
-import java.util.function.BiPredicate;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Before;
 import org.junit.Test;
 
 public final class ClaimedFragmentTest {
   private static final Runnable DO_NOTHING = () -> {};
-  private static final BiConsumer<Long, BiPredicate<ZeebeEntry, Long>> ADD_NOTHING = (a, b) -> {};
+  private static final BiConsumer<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>>
+      ADD_NOTHING = (a, b) -> {};
 
   private static final int A_FRAGMENT_LENGTH = 1024;
   UnsafeBuffer underlyingBuffer;
@@ -42,7 +42,7 @@ public final class ClaimedFragmentTest {
         underlyingBuffer, 0, A_FRAGMENT_LENGTH, () -> isSet.set(true), (a, b) -> {});
 
     // if
-    claimedFragment.commit(0, (a, b) -> false);
+    claimedFragment.commit(0, (a, b, c, d) -> false);
 
     // then
     assertThat(underlyingBuffer.getInt(lengthOffset(0))).isEqualTo(A_FRAGMENT_LENGTH);

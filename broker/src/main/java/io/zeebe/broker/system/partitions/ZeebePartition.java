@@ -657,7 +657,9 @@ public final class ZeebePartition extends Actor
     if (indexed.type() == ZeebeEntry.class) {
       actor.run(
           () -> {
-            final long commitPosition = indexed.<ZeebeEntry>cast().entry().highestPosition();
+            final ZeebeEntry entry = indexed.<ZeebeEntry>cast().entry();
+            final long commitPosition = (indexed.index() << 8) + (entry.getRecordCount() - 1);
+
             if (this.logStream == null) {
               this.deferredCommitPosition = commitPosition;
               return;

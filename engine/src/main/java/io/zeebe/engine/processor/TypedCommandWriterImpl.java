@@ -9,7 +9,6 @@ package io.zeebe.engine.processor;
 
 import static io.zeebe.engine.processor.TypedEventRegistry.EVENT_REGISTRY;
 
-import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.logstreams.log.LogStreamBatchWriter;
 import io.zeebe.logstreams.log.LogStreamBatchWriter.LogEntryBuilder;
 import io.zeebe.msgpack.UnpackedObject;
@@ -21,9 +20,7 @@ import io.zeebe.protocol.record.ValueType;
 import io.zeebe.protocol.record.intent.Intent;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Future;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class TypedCommandWriterImpl implements TypedCommandWriter {
   protected final Consumer<RecordMetadata> noop = m -> {};
@@ -62,9 +59,7 @@ public class TypedCommandWriterImpl implements TypedCommandWriter {
       final Intent intent,
       final UnpackedObject value,
       final Consumer<RecordMetadata> additionalMetadata) {
-    // TODO: add callback
-    appendRecord(
-        key, type, intent, RejectionType.NULL_VAL, "", value, additionalMetadata, (ze) -> null);
+    appendRecord(key, type, intent, RejectionType.NULL_VAL, "", value, additionalMetadata);
   }
 
   protected void appendRecord(
@@ -74,10 +69,9 @@ public class TypedCommandWriterImpl implements TypedCommandWriter {
       final RejectionType rejectionType,
       final String rejectionReason,
       final UnpackedObject value,
-      final Consumer<RecordMetadata> additionalMetadata,
-      final Function<ZeebeEntry, Future> onWrite) {
+      final Consumer<RecordMetadata> additionalMetadata) {
 
-    final LogEntryBuilder event = batchWriter.event(onWrite);
+    final LogEntryBuilder event = batchWriter.event();
 
     if (sourceRecordPosition >= 0) {
       batchWriter.sourceRecordPosition(sourceRecordPosition);

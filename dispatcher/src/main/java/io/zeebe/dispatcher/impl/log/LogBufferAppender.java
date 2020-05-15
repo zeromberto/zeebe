@@ -24,7 +24,6 @@ import io.zeebe.dispatcher.ClaimedFragment;
 import io.zeebe.dispatcher.ClaimedFragmentBatch;
 import io.zeebe.dispatcher.Loggers;
 import java.util.function.BiConsumer;
-import java.util.function.BiPredicate;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
 
@@ -41,7 +40,7 @@ public class LogBufferAppender {
       final int length,
       final int streamId,
       final Runnable onComplete,
-      final BiConsumer<Long, BiPredicate<ZeebeEntry, Long>> addHandler) {
+      final BiConsumer<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>> addHandler) {
     final int partitionSize = partition.getPartitionSize();
     final int framedMessageLength = framedLength(length);
     final int alignedFrameLength = alignedLength(framedMessageLength);
@@ -76,7 +75,7 @@ public class LogBufferAppender {
       final int fragmentCount,
       final int batchLength,
       final Runnable onComplete,
-      final BiConsumer<Long, BiPredicate<ZeebeEntry, Long>> addHandler) {
+      final BiConsumer<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>> addHandler) {
     final int partitionSize = partition.getPartitionSize();
     // reserve enough space for frame alignment because each batch fragment must start on an aligned
     // position

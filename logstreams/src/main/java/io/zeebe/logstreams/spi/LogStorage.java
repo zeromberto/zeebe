@@ -119,6 +119,6 @@ public interface LogStorage {
      */
     void onCommitError(long address, Throwable error);
 
-    boolean canAppend(ZeebeEntry entry, long index);
+    void updateRecords(ZeebeEntry entry, long index) throws IllegalStateException;
   }
 }

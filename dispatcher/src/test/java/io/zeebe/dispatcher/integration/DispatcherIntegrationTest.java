@@ -249,7 +249,7 @@ public final class DispatcherIntegrationTest {
       final MutableDirectBuffer buffer = claimedFragment.getBuffer();
       buffer.putInt(claimedFragment.getOffset(), i);
 
-      claimedFragment.commit(position, (a, b) -> false);
+      claimedFragment.commit(position, (a, b, c, d) -> false);
     }
   }
 
@@ -265,7 +265,7 @@ public final class DispatcherIntegrationTest {
                 } while (position <= 0);
                 final MutableDirectBuffer buffer = claimedFragment.getBuffer();
                 buffer.putInt(claimedFragment.getOffset(), runCount);
-                claimedFragment.commit(position, (a, b) -> false);
+                claimedFragment.commit(position, (a, b, c, d) -> false);
               })
           .start();
     }

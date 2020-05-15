@@ -26,7 +26,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.ClaimedFragmentBatch;
 import java.util.function.BiConsumer;
-import java.util.function.BiPredicate;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Before;
 import org.junit.Rule;
@@ -35,7 +34,8 @@ import org.junit.rules.ExpectedException;
 
 public final class ClaimedFragmentBatchTest {
   private static final Runnable DO_NOTHING = () -> {};
-  private static final BiConsumer<Long, BiPredicate<ZeebeEntry, Long>> ADD_NOTHING = (a, b) -> {};
+  private static final BiConsumer<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>>
+      ADD_NOTHING = (a, b) -> {};
 
   private static final int PARTITION_ID = 1;
   private static final int PARTITION_OFFSET = 16;
@@ -115,7 +115,7 @@ public final class ClaimedFragmentBatchTest {
     claimedBatch.nextFragment(MESSAGE_LENGTH, 2);
 
     // when
-    claimedBatch.commit((a, b) -> false);
+    claimedBatch.commit((a, b, c, d) -> false);
 
     // then
     int bufferOffset = PARTITION_OFFSET;
@@ -169,7 +169,7 @@ public final class ClaimedFragmentBatchTest {
     claimedBatch.nextFragment(MESSAGE_LENGTH, 2);
 
     // when
-    claimedBatch.commit((a, b) -> false);
+    claimedBatch.commit((a, b, c, d) -> false);
 
     // then
     final int bufferOffset = PARTITION_OFFSET + 2 * alignedFramedLength(MESSAGE_LENGTH);
@@ -206,7 +206,7 @@ public final class ClaimedFragmentBatchTest {
     claimedBatch.nextFragment(MESSAGE_LENGTH, 1);
 
     // when
-    claimedBatch.commit((a, b) -> false);
+    claimedBatch.commit((a, b, c, d) -> false);
 
     // then
     int bufferOffset = PARTITION_OFFSET;
@@ -235,7 +235,7 @@ public final class ClaimedFragmentBatchTest {
     final int fragmentLength = remainingCapacity - HEADER_LENGTH;
 
     claimedBatch.nextFragment(fragmentLength, 2);
-    claimedBatch.commit((a, b) -> false);
+    claimedBatch.commit((a, b, c, d) -> false);
 
     // then
     final int bufferOffset = PARTITION_OFFSET + alignedFramedLength(MESSAGE_LENGTH);
@@ -256,7 +256,7 @@ public final class ClaimedFragmentBatchTest {
     final int fragmentLength = remainingCapacity - HEADER_LENGTH - FRAME_ALIGNMENT + 1;
 
     claimedBatch.nextFragment(fragmentLength, 2);
-    claimedBatch.commit((a, b) -> false);
+    claimedBatch.commit((a, b, c, d) -> false);
 
     // then
     final int bufferOffset = PARTITION_OFFSET + alignedFramedLength(MESSAGE_LENGTH);

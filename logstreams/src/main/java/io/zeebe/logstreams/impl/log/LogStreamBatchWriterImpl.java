@@ -219,7 +219,7 @@ public final class LogStreamBatchWriterImpl implements LogStreamBatchWriter, Log
         // return position of last event
         result = writeEventsToBuffer(claimedBatch.getBuffer());
 
-        claimedBatch.commit(this::canAppendBatch);
+        claimedBatch.commit(this::updateRecords);
       } catch (final Exception e) {
         claimedBatch.abort();
         LangUtil.rethrowUnchecked(e);
@@ -230,37 +230,40 @@ public final class LogStreamBatchWriterImpl implements LogStreamBatchWriter, Log
     return result;
   }
 
-  private boolean canAppendBatch(final ZeebeEntry entry, final Long index) {
-    // iterate on records and poll queue
+  private void updateRecords(
+      final ZeebeEntry entry,
+      final Long index,
+      final Integer firstRecordIndex,
+      final Integer lastRecordIndex) {
     final LoggedEventImpl reader = new LoggedEventImpl();
     final CRC32 checksum = new CRC32();
 
     final var view = new UnsafeBuffer(entry.data());
-    var offset = 0;
-    // 8 bytes for the offset
-    // 56 bytes index
-    long recordIndex = index << 8;
+    int offset = 0;
     int entryOffset = 0;
     do {
       reader.wrap(view, offset);
       final byte[] buff = new byte[reader.getLength()];
       reader.getBuffer().getBytes(offset, buff, 0, reader.getLength());
-      checksum.reset();
-      checksum.update(buff);
 
-      // TODO: return false and log warning?
-      if (checksum.getValue() != eventChecksums.poll()) {
-        return false;
+      if (entryOffset >= firstRecordIndex) {
+        checksum.reset();
+        checksum.update(buff);
+
+        if (checksum.getValue() != eventChecksums.poll()) {
+          throw new IllegalStateException(
+              String.format(
+                  "Record %d in entry with index %d is not in expected order.",
+                  entryOffset, index));
+        }
+
+        final long position = (index << 8) + entryOffset;
+        LogEntryDescriptor.setPosition(view, offset, position);
       }
-
-      recordIndex += entryOffset;
-      LogEntryDescriptor.setPosition(view, offset, recordIndex);
 
       offset += reader.getLength();
       entryOffset++;
-    } while (offset < view.capacity());
-
-    return true;
+    } while (offset < view.capacity() && entryOffset <= lastRecordIndex);
   }
 
   private long claimBatchForEvents() {

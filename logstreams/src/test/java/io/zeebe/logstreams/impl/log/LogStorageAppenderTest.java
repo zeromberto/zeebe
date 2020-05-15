@@ -9,7 +9,6 @@ package io.zeebe.logstreams.impl.log;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -121,11 +120,7 @@ public final class LogStorageAppenderTest {
 
     // make sure we read the correct lowest/highest positions
     verify(logStorage, timeout(1000).times(1))
-        .append(
-            eq(lowestPosition),
-            eq(highestPosition),
-            any(ByteBuffer.class),
-            any(AppendListener.class));
+        .append(any(ByteBuffer.class), any(AppendListener.class));
 
     // ensure events were written properly
     assertThat(reader.seek(lowestPosition)).isTrue();

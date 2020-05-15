@@ -20,7 +20,6 @@ import io.atomix.raft.zeebe.ZeebeLogAppender;
 import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.storage.journal.JournalReader.Mode;
-import io.zeebe.logstreams.impl.log.LoggedEventImpl;
 import io.zeebe.logstreams.spi.LogStorage;
 import io.zeebe.logstreams.storage.atomix.AtomixAppenderSupplier;
 import io.zeebe.logstreams.storage.atomix.AtomixLogStorage;
@@ -40,7 +39,7 @@ import org.junit.rules.TemporaryFolder;
 
 public final class AtomixLogStorageRule extends ExternalResource
     implements AtomixReaderFactory, AtomixAppenderSupplier, ZeebeLogAppender, Supplier<LogStorage> {
-  private final LoggedEventImpl event = new LoggedEventImpl();
+
   private final TemporaryFolder temporaryFolder;
   private final int partitionId;
   private final UnaryOperator<RaftStorage.Builder> builder;
@@ -72,7 +71,7 @@ public final class AtomixLogStorageRule extends ExternalResource
   }
 
   @Override
-  public void before() throws Throwable {
+  public void before() {
     open();
   }
 
@@ -82,17 +81,9 @@ public final class AtomixLogStorageRule extends ExternalResource
   }
 
   @Override
-  public void appendEntry(
-      final long lowestPosition,
-      final long highestPosition,
-      final ByteBuffer data,
-      final AppendListener listener) {
+  public void appendEntry(final ByteBuffer data, final AppendListener listener) {
     final Indexed<ZeebeEntry> entry =
-        raftLog
-            .writer()
-            .append(
-                new ZeebeEntry(
-                    0, System.currentTimeMillis(), lowestPosition, highestPosition, data));
+        raftLog.writer().append(new ZeebeEntry(0, System.currentTimeMillis(), data));
     listener.onWrite(entry);
     raftLog.writer().commit(entry.index());
 
@@ -102,10 +93,9 @@ public final class AtomixLogStorageRule extends ExternalResource
     }
   }
 
-  public Indexed<ZeebeEntry> appendEntry(
-      final long lowestPosition, final long highestPosition, final ByteBuffer data) {
+  public Indexed<ZeebeEntry> appendEntry(final ByteBuffer data) {
     final var listener = new NoopListener();
-    appendEntry(lowestPosition, highestPosition, data, listener);
+    appendEntry(data, listener);
 
     return listener.lastWrittenEntry;
   }
@@ -222,6 +212,11 @@ public final class AtomixLogStorageRule extends ExternalResource
 
     @Override
     public void onWriteError(final Throwable throwable) {}
+
+    @Override
+    public boolean canAppend(ZeebeEntry entry, long index) {
+      return true;
+    }
 
     @Override
     public void onCommit(final Indexed<ZeebeEntry> indexed) {}

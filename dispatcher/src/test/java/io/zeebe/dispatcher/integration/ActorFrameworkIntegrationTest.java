@@ -181,7 +181,7 @@ public final class ActorFrameworkIntegrationTest {
           dispatcher.claim(this.claim, 4534) - DataFrameDescriptor.alignedFramedLength(4534);
       if (position >= 0) {
         this.claim.getBuffer().putInt(this.claim.getOffset(), counter++);
-        this.claim.commit(position, (a, b) -> false);
+        this.claim.commit(position, (a, b, c, d) -> false);
       }
 
       if (counter < totalWork) {

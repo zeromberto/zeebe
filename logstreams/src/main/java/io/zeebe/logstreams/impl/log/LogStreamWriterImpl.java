@@ -153,7 +153,7 @@ public final class LogStreamWriterImpl implements LogStreamRecordWriter {
         valueWriter.write(writeBuffer, valueOffset(bufferOffset, metadataLength));
 
         result = claimedPosition;
-        claimedFragment.commit(claimedPosition, this::handleWrittenEntry);
+        claimedFragment.commit(claimedPosition, this::updateRecord);
       } catch (final Exception e) {
         claimedFragment.abort();
         LangUtil.rethrowUnchecked(e);
@@ -175,41 +175,45 @@ public final class LogStreamWriterImpl implements LogStreamRecordWriter {
     eventChecksums.offer(checksum.getValue());
   }
 
-  private boolean handleWrittenEntry(final ZeebeEntry entry, final Long index) {
-    // iterate on records and poll queue
+  private void updateRecord(
+      final ZeebeEntry entry,
+      final Long index,
+      final Integer firstRecordIndex,
+      final Integer lastRecordIndex) {
     final LoggedEventImpl reader = new LoggedEventImpl();
     final CRC32 checksum = new CRC32();
 
     final var view = new UnsafeBuffer(entry.data());
-    var offset = 0;
-    // 8 bytes for the offset
-    // 56 bytes index
-    long recordIndex = index << 8;
+    int offset = 0;
     int entryOffset = 0;
     do {
       reader.wrap(view, offset);
       final byte[] buff = new byte[reader.getLength()];
       reader.getBuffer().getBytes(offset, buff, 0, reader.getLength());
-      checksum.reset();
-      checksum.update(buff);
-      if (checksum.getValue() != eventChecksums.poll()) {
-        return false;
-      }
 
-      recordIndex += entryOffset;
-      LogEntryDescriptor.setPosition(view, offset, recordIndex);
+      if (entryOffset == firstRecordIndex && entryOffset == lastRecordIndex) {
+        checksum.reset();
+        checksum.update(buff);
+        if (checksum.getValue() != eventChecksums.poll()) {
+          throw new IllegalStateException(
+              String.format(
+                  "Record %d in entry with index %d is not in expected order.",
+                  entryOffset, index));
+        }
+
+        final long position = (index << 8) + entryOffset;
+        LogEntryDescriptor.setPosition(view, offset, position);
+      }
 
       offset += reader.getLength();
       entryOffset++;
     } while (offset < view.capacity());
-
-    return true;
   }
 
   private long claimLogEntry(final int valueLength, final int metadataLength) {
     final int framedLength = valueLength + headerLength(metadataLength);
 
-    long claimedPosition = -1;
+    long claimedPosition;
 
     do {
 

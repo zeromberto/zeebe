@@ -33,10 +33,19 @@ import java.util.Objects;
 public class ZeebeEntry extends TimestampedEntry {
 
   private final ByteBuffer data;
+  private int recordCount;
 
   public ZeebeEntry(final long term, final long timestamp, final ByteBuffer data) {
     super(term, timestamp);
     this.data = data;
+  }
+
+  public void setRecordCount(final int num) {
+    recordCount = num;
+  }
+
+  public int getRecordCount() {
+    return recordCount;
   }
 
   @Override

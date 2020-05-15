@@ -25,11 +25,11 @@ import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.impl.log.LogBuffer;
 import io.zeebe.dispatcher.impl.log.LogBufferAppender;
 import io.zeebe.dispatcher.impl.log.LogBufferPartition;
+import io.zeebe.dispatcher.impl.log.QuadFunction;
 import io.zeebe.util.sched.ActorCondition;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.function.BiPredicate;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -57,7 +57,7 @@ public final class DispatcherTest {
   FragmentHandler fragmentHandler;
   ClaimedFragment claimedFragment;
   AtomicPosition subscriberPosition;
-  Map<Long, BiPredicate<ZeebeEntry, Long>> handlers;
+  Map<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>> handlers;
 
   @Before
   public void setup() {
@@ -91,8 +91,7 @@ public final class DispatcherTest {
             A_LOG_WINDOW_LENGTH,
             A_LOG_WINDOW_LENGTH,
             new String[0],
-            "test"
-        ) {
+            "test") {
           @Override
           protected Subscription newSubscription(
               final int subscriberId,

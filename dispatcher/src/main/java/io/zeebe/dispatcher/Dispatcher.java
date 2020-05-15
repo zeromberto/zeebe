@@ -16,6 +16,7 @@ import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.impl.log.LogBuffer;
 import io.zeebe.dispatcher.impl.log.LogBufferAppender;
 import io.zeebe.dispatcher.impl.log.LogBufferPartition;
+import io.zeebe.dispatcher.impl.log.QuadFunction;
 import io.zeebe.util.sched.Actor;
 import io.zeebe.util.sched.ActorCondition;
 import io.zeebe.util.sched.FutureUtil;
@@ -24,7 +25,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
 import org.slf4j.Logger;
 
 /** Component for sending and receiving messages between different threads. */
@@ -48,7 +48,8 @@ public class Dispatcher extends Actor {
   private volatile boolean isClosed = false;
   private final Runnable backgroundTask = this::runBackgroundTask;
   private ActorCondition dataConsumed;
-  private final Map<Long, BiPredicate<ZeebeEntry, Long>> handlers = new ConcurrentHashMap<>();
+  private final Map<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>> handlers =
+      new ConcurrentHashMap<>();
 
   Dispatcher(
       final LogBuffer logBuffer,
@@ -112,7 +113,8 @@ public class Dispatcher extends Actor {
     }
   }
 
-  private void addHandler(final Long position, final BiPredicate<ZeebeEntry, Long> handler) {
+  private void addHandler(
+      final Long position, final QuadFunction<ZeebeEntry, Long, Integer, Integer> handler) {
     handlers.put(position, handler);
   }
 

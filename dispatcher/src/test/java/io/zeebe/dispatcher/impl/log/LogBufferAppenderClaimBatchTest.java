@@ -27,7 +27,6 @@ import static org.mockito.Mockito.when;
 import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.ClaimedFragmentBatch;
 import java.util.function.BiConsumer;
-import java.util.function.BiPredicate;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,7 +34,8 @@ import org.mockito.InOrder;
 
 public final class LogBufferAppenderClaimBatchTest {
   private static final Runnable DO_NOTHING = () -> {};
-  private static final BiConsumer<Long, BiPredicate<ZeebeEntry, Long>> ADD_NOTHING = (a, b) -> {};
+  private static final BiConsumer<Long, QuadFunction<ZeebeEntry, Long, Integer, Integer>>
+      ADD_NOTHING = (a, b) -> {};
 
   private static final int PARTITION_ID = 10;
   private static final int PARTITION_LENGTH = 1024;
@@ -149,7 +149,7 @@ public final class LogBufferAppenderClaimBatchTest {
   }
 
   @Test
-  public void shouldClaimIfRemaingCapacityIsEqualHeaderSize() {
+  public void shouldClaimIfRemainingCapacityIsEqualHeaderSize() {
     // given
     final int currentTail = PARTITION_LENGTH - HEADER_LENGTH - BATCH_FRAGMENT_LENGTH;
 

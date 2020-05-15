@@ -7,11 +7,15 @@
  */
 package io.zeebe.logstreams.impl.log;
 
+import static io.zeebe.dispatcher.impl.log.DataFrameDescriptor.flagsOffset;
+
 import com.netflix.concurrency.limits.limit.AbstractLimit;
 import com.netflix.concurrency.limits.limit.WindowedLimit;
 import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.dispatcher.BlockPeek;
 import io.zeebe.dispatcher.Subscription;
+import io.zeebe.dispatcher.impl.log.DataFrameDescriptor;
+import io.zeebe.dispatcher.impl.log.QuadFunction;
 import io.zeebe.logstreams.impl.Loggers;
 import io.zeebe.logstreams.impl.backpressure.AlgorithmCfg;
 import io.zeebe.logstreams.impl.backpressure.AppendBackpressureMetrics;
@@ -34,7 +38,7 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Queue;
-import java.util.function.BiPredicate;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
 
 /** Consume the write buffer and append the blocks to the distributedlog. */
@@ -108,7 +112,8 @@ public final class LogStorageAppender extends Actor implements HealthMonitorable
     final int bytes = rawBuffer.remaining();
     final ByteBuffer copiedBuffer = ByteBuffer.allocate(bytes).put(rawBuffer).flip();
 
-    final var listener = new Listener(blockPeek.getHandlers());
+    final var listener =
+        new Listener(copiedBuffer, blockPeek.getHandlers(), blockPeek.getBlockLength());
     appendToStorage(copiedBuffer, listener);
     blockPeek.markCompleted();
   }
@@ -179,10 +184,18 @@ public final class LogStorageAppender extends Actor implements HealthMonitorable
   }
 
   private final class Listener implements AppendListener {
-    private final Queue<BiPredicate<ZeebeEntry, Long>> handlers;
 
-    private Listener(Queue<BiPredicate<ZeebeEntry, Long>> handlers) {
+    private final ByteBuffer blockBuffer;
+    private final Queue<QuadFunction<ZeebeEntry, Long, Integer, Integer>> handlers;
+    private final int blockLength;
+
+    private Listener(
+        ByteBuffer blockBuffer,
+        Queue<QuadFunction<ZeebeEntry, Long, Integer, Integer>> handlers,
+        int blockLength) {
+      this.blockBuffer = blockBuffer;
       this.handlers = handlers;
+      this.blockLength = blockLength;
     }
 
     @Override
@@ -211,17 +224,58 @@ public final class LogStorageAppender extends Actor implements HealthMonitorable
     }
 
     @Override
-    public boolean canAppend(final ZeebeEntry entry, final long index) {
-      final BiPredicate<ZeebeEntry, Long> handler = handlers.poll();
+    public void updateRecords(final ZeebeEntry entry, final long index) {
+      final UnsafeBuffer buffer = new UnsafeBuffer(0, 0);
+      int offset = 0;
+      int recordIndex = 0;
+      int batchIndex = 0;
+      boolean inBatch = false;
+
+      while (offset < blockLength) {
+        final int framedFragmentLength =
+            blockBuffer.getInt(DataFrameDescriptor.lengthOffset(offset));
+        final int fragmentLength = DataFrameDescriptor.messageLength(framedFragmentLength);
+        final int messageOffset = DataFrameDescriptor.messageOffset(offset);
+
+        buffer.wrap(blockBuffer, messageOffset, fragmentLength);
+
+        final byte flags = buffer.getByte(flagsOffset(offset));
+        if (inBatch) {
+          if (DataFrameDescriptor.flagBatchEnd(flags)) {
+            inBatch = false;
+
+            // if batch ended, call handler for the whole batch
+            updateRecords(entry, index, batchIndex, recordIndex);
+          }
+        } else {
+          inBatch = DataFrameDescriptor.flagBatchBegin(flags);
+          if (inBatch) {
+            batchIndex = recordIndex;
+          } else {
+            // if it's a single record, call handler for a single record
+            updateRecords(entry, index, recordIndex, recordIndex);
+          }
+        }
+
+        recordIndex++;
+        offset += DataFrameDescriptor.alignedLength(framedFragmentLength);
+      }
+
+      entry.setRecordCount(recordIndex);
+    }
+
+    private void updateRecords(
+        final ZeebeEntry entry, final long raftIndex, final int firstRecord, final int lastRecord) {
+      final QuadFunction<ZeebeEntry, Long, Integer, Integer> handler = handlers.poll();
       if (handler == null) {
         throw new IllegalStateException("Expected to have handler for entry but none was found.");
       }
 
-      return handler.test(entry, index);
+      handler.test(entry, raftIndex, firstRecord, lastRecord);
     }
+  }
 
-    private void releaseBackPressure() {
-      //      actor.run(() -> appendEntryLimiter.onCommit(positions.highest));
-    }
+  private void releaseBackPressure() {
+    //      actor.run(() -> appendEntryLimiter.onCommit(positions.highest));
   }
 }
