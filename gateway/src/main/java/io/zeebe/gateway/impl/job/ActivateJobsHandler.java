@@ -109,6 +109,8 @@ public class ActivateJobsHandler {
         responseObserver.onCompleted();
       } catch (Exception e) {
         // Cannot close the stream. Nothing to do
+        Loggers.GATEWAY_LOGGER.trace(
+            "Expected complete activate jobs request successfully, but encountered error", e);
       }
     }
   }
