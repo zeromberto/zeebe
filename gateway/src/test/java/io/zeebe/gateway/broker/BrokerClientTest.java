@@ -10,6 +10,7 @@ package io.zeebe.gateway.broker;
 import static io.zeebe.protocol.Protocol.START_PARTITION_ID;
 import static io.zeebe.test.util.TestUtil.waitUntil;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.mockito.Mockito.mock;
@@ -17,6 +18,7 @@ import static org.mockito.Mockito.when;
 
 import io.atomix.cluster.AtomixCluster;
 import io.atomix.cluster.ClusterMembershipService;
+import io.zeebe.gateway.cmd.ClientResponseException;
 import io.zeebe.gateway.impl.broker.BrokerClient;
 import io.zeebe.gateway.impl.broker.BrokerClientImpl;
 import io.zeebe.gateway.impl.broker.cluster.BrokerClusterStateImpl;
@@ -322,16 +324,17 @@ public class BrokerClientTest {
     // given
     broker.onExecuteCommandRequest(ValueType.JOB, JobIntent.COMPLETE).doNotRespond();
 
-    // then
-    exception.expect(ExecutionException.class);
-    exception.expectMessage("Request timed out after PT3S");
-
-    // when
-    client
-        .sendRequest(
-            new BrokerCompleteJobRequest(
-                Protocol.encodePartitionId(1, 1), DocumentValue.EMPTY_DOCUMENT))
-        .join();
+    // when then
+    assertThatThrownBy(
+            () ->
+                client
+                    .sendRequest(
+                        new BrokerCompleteJobRequest(
+                            Protocol.encodePartitionId(1, 1), DocumentValue.EMPTY_DOCUMENT))
+                    .join())
+        .isInstanceOf(ExecutionException.class)
+        .hasCauseInstanceOf(ClientResponseException.class)
+        .hasMessageContaining("Request timed out after PT3S");
   }
 
   @Test
