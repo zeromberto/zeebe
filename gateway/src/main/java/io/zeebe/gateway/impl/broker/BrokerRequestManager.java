@@ -194,8 +194,8 @@ public class BrokerRequestManager extends Actor {
                 final BrokerResponse<T> response = request.getResponse(clientResponse);
                 responseConsumer.accept(response, null);
               } else {
-                responseConsumer.accept(null, error);
                 wasDropped = (error instanceof RequestTimeoutException);
+                responseConsumer.accept(null, error);
               }
             } catch (final RuntimeException e) {
               responseConsumer.accept(null, new ClientResponseException(e));
