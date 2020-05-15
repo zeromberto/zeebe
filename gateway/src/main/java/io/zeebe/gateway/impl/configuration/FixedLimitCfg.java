@@ -23,7 +23,11 @@ public class FixedLimitCfg {
     return this;
   }
 
-  public void init(final Environment environment) {}
+  public void init(final Environment environment) {
+    environment
+        .getInt(EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_FIXED_LIMIT)
+        .ifPresent(this::setLimit);
+  }
 
   @Override
   public int hashCode() {
