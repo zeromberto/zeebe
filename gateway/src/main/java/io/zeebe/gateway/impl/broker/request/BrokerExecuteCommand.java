@@ -113,8 +113,6 @@ public abstract class BrokerExecuteCommand<T> extends BrokerRequest<T> {
 
   @Override
   public String toString() {
-    return "BrokerExecuteCommand{" +
-        "request=" + request +
-        '}';
+    return "BrokerExecuteCommand{" + "request=" + request + '}';
   }
 }
