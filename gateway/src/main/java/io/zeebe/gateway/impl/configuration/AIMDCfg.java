@@ -83,7 +83,8 @@ public class AIMDCfg {
         .get(EnvironmentConstants.ENV_GATEWAY_BACKPRESSURE_AIMD_REQUEST_TIMEOUT)
         .ifPresent(this::setRequestTimeout);
     if (requestTimeout == null) {
-      setRequestTimeout(gatewayCfg.getCluster().getRequestTimeout().toMillis() + "ms");
+      setRequestTimeout(
+          Math.floorDiv(gatewayCfg.getCluster().getRequestTimeout().toMillis(), 2L) + "ms");
     }
   }
 

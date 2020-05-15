@@ -117,7 +117,7 @@ public class GatewayCfgTest {
     final BackpressureCfg backpressure = gatewayCfg.getBackpressure();
     assertThat(backpressure.isEnabled()).isTrue();
     assertThat(backpressure.getAimdCfg().getRequestTimeout())
-        .isEqualTo(gatewayCfg.getCluster().getRequestTimeout());
+        .isEqualTo(gatewayCfg.getCluster().getRequestTimeout().dividedBy(2));
   }
 
   @Test
