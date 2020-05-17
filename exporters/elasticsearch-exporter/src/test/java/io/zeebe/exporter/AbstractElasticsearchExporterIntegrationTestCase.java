@@ -9,7 +9,7 @@ package io.zeebe.exporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.carrotsearch.hppc.cursors.ObjectCursor;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.zeebe.exporter.util.ElasticsearchContainer;
@@ -21,12 +21,7 @@ import io.zeebe.test.util.record.RecordingExporterTestWatcher;
 import io.zeebe.util.ZbLogger;
 import java.io.IOException;
 import java.util.Map;
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
-import org.elasticsearch.action.get.GetRequest;
-import org.elasticsearch.action.get.GetResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.collect.ImmutableOpenMap;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.client.Request;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -66,12 +61,16 @@ public abstract class AbstractElasticsearchExporterIntegrationTestCase {
   }
 
   protected void assertIndexSettings() {
-    final ImmutableOpenMap<String, Settings> settingsForIndices = esClient.getSettingsForIndices();
-    for (final ObjectCursor<String> key : settingsForIndices.keys()) {
-      final String indexName = key.value;
-      final Settings settings = settingsForIndices.get(indexName);
-      final Integer numberOfShards = settings.getAsInt("index.number_of_shards", -1);
-      final Integer numberOfReplicas = settings.getAsInt("index.number_of_replicas", -1);
+    final Map<String, Map<String, Object>> settingsForIndices = esClient.getSettingsForIndices();
+    for (final String indexName : settingsForIndices.keySet()) {
+      final Map<String, Object> settings =
+          (Map<String, Object>)
+              ((Map<String, Object>) settingsForIndices.get(indexName).get("settings"))
+                  .get("index");
+      final Integer numberOfShards =
+          Integer.parseInt((String) settings.getOrDefault("number_of_shards", "-1"), 10);
+      final Integer numberOfReplicas =
+          Integer.parseInt((String) settings.getOrDefault("number_of_replicas", "-1"), 10);
 
       final int expectedNumberOfShards = numberOfShardsForIndex(indexName);
 
@@ -155,35 +154,38 @@ public abstract class AbstractElasticsearchExporterIntegrationTestCase {
   }
 
   protected static class ElasticsearchTestClient extends ElasticsearchClient {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     ElasticsearchTestClient(
         final ElasticsearchExporterConfiguration configuration, final Logger log) {
       super(configuration, log);
     }
 
-    ImmutableOpenMap<String, Settings> getSettingsForIndices() {
-      final GetSettingsRequest settingsRequest = new GetSettingsRequest();
+    Map<String, Map<String, Object>> getSettingsForIndices() {
+      final var request = new Request("GET", "/_all/_settings");
       try {
-        return client
-            .indices()
-            .getSettings(settingsRequest, RequestOptions.DEFAULT)
-            .getIndexToSettings();
+        final var response = client.performRequest(request);
+        if (response.getStatusLine().getStatusCode() >= 400) {
+          throw new ElasticsearchExporterException(
+              "Failed to get index settings: " + response.getStatusLine().getReasonPhrase());
+        }
+
+        return MAPPER.readValue(response.getEntity().getContent(), new TypeReference<>() {});
       } catch (final IOException e) {
         throw new ElasticsearchExporterException("Failed to get index settings", e);
       }
     }
 
     Map<String, Object> get(final Record<?> record) {
-      final GetRequest request =
-          new GetRequest(indexFor(record), typeFor(record), idFor(record))
-              .routing(String.valueOf(record.getPartitionId()));
+      final var request =
+          new Request("GET", "/" + indexFor(record) + "/" + typeFor(record) + "/" + idFor(record));
+      request.addParameter("routing", String.valueOf(record.getPartitionId()));
       try {
-        final GetResponse response = client.get(request, RequestOptions.DEFAULT);
-        if (response.isExists()) {
-          return response.getSourceAsMap();
-        } else {
-          return null;
-        }
+        final var response = client.performRequest(request);
+        final var parsed =
+            MAPPER.readValue(
+                response.getEntity().getContent(), new TypeReference<Map<String, Object>>() {});
+        return (Map<String, Object>) parsed.get("_source");
       } catch (final IOException e) {
         throw new ElasticsearchExporterException(
             "Failed to get record " + idFor(record) + " from index " + indexFor(record));
